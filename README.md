@@ -19,9 +19,7 @@
 
 ## Betrieb auf Unraid
 
-1. Das Image wird von GitHub Actions nach `ghcr.io/michi1g/workspace2lexware` gebaut. Ist das Repository privat, ist es auch das Paket. Dann einmalig auf dem Unraid-Terminal anmelden (Personal Access Token mit `read:packages`):
-   `docker login ghcr.io -u michi1g`
-   Alternativ das Paket unter GitHub → Packages → Package settings auf „Public“ stellen. Es enthält keine Zugangsdaten.
+1. Das Image wird von GitHub Actions nach `ghcr.io/michi1g/workspace2lexware` gebaut. Das Repository ist öffentlich, das Paket ist aber standardmäßig privat. Entweder das Paket unter GitHub → Packages → Package settings auf „Public“ stellen (es enthält keine Zugangsdaten) oder auf dem Unraid-Terminal einmalig anmelden (Personal Access Token mit `read:packages`): `docker login ghcr.io -u michi1g`.
 2. Container anlegen: entweder `unraid/workspace2lexware.xml` nach `/boot/config/plugins/dockerMan/templates-user/` kopieren und unter *Docker → Add Container* das Template wählen, oder die `docker-compose.yml` mit dem Compose-Plugin verwenden.
 3. `GUI_PASSWORD` setzen und die GUI unter `http://<unraid-ip>:8080` öffnen.
 4. **Verbindungen:** `credentials.json` hochladen, „Login-Link erzeugen“, bei Google anmelden. Google leitet danach auf eine `localhost`-Seite weiter, die nicht lädt. Die komplette Adresse aus der Adresszeile in die GUI einfügen.
@@ -31,6 +29,7 @@ Alle veränderlichen Daten (Einstellungen, Token, Datenbank, Beleg-Dateien) lieg
 
 ## Sicherheit
 
+- **Keine Zugangsdaten im Repository.** Das Repository ist öffentlich. API-Keys, `credentials.json`, `token.json` und Passwörter gehören nur in das Volume `/data` bzw. in Umgebungsvariablen. Die `.gitignore` schließt typische Dateien aus, und die CI prüft jeden Push mit gitleaks.
 - Die GUI ist nur für das Heimnetz gedacht. Nicht per Portfreigabe ins Internet stellen. Für Zugriff von außen ein VPN verwenden.
 - Mit `GUI_PASSWORD` ist ein Login aktiv (ohne Passwort ist die GUI offen). Alle Aktionen sind gegen CSRF geschützt.
 - Der Lexware-API-Key liegt in `/data/settings.json` (Dateirechte 600) oder in der Umgebungsvariable `LEXWARE_API_KEY`, die Vorrang hat.

@@ -4,3 +4,13 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .env
+
+# Zugangsdaten: niemals committen
+credentials*.json
+client_secret*.json
+token*.json
+settings.json
+secret_key
+*.key
+*.pem
+.env*
