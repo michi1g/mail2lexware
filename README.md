@@ -25,6 +25,8 @@
 4. **Verbindungen:** `credentials.json` hochladen, „Login-Link erzeugen“, bei Google anmelden. Google leitet danach auf eine `localhost`-Seite weiter, die nicht lädt. Die komplette Adresse aus der Adresszeile in die GUI einfügen.
 5. **Einstellungen:** Lexware-API-Key eintragen, Suchanfrage und Modus anpassen.
 
+Die Rechte von `/data` korrigiert der Container beim Start selbst (Standard `PUID=99`, `PGID=100` = nobody:users wie bei Unraid, per Umgebungsvariable änderbar).
+
 Alle veränderlichen Daten (Einstellungen, Token, Datenbank, Beleg-Dateien) liegen im Volume `/data`. Das Image lässt sich ohne Datenverlust aktualisieren.
 
 ## Sicherheit

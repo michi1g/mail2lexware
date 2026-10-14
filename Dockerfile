@@ -15,13 +15,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY workspace2lexware ./workspace2lexware
 
-# 99:100 = nobody:users, die Standardbenutzer von Unraid
-RUN mkdir /data && chown 99:100 /data
-USER 99:100
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh && mkdir /data
+
+# Der Entrypoint startet als root, korrigiert die Rechte von /data und läuft dann als PUID:PGID
+# (Standard 99:100 = nobody:users wie bei Unraid) weiter.
 VOLUME /data
 EXPOSE 8080
 
 HEALTHCHECK --interval=60s --timeout=5s --start-period=15s \
     CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/health' % os.environ['PORT'], timeout=3)"
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["python", "-m", "workspace2lexware"]
