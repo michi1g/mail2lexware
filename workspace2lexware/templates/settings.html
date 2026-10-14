@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Einstellungen</h1>
+<form method="post" class="card form">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+
+  <h2>Suche</h2>
+  <label>Gmail-Suchanfrage
+    <input name="query" value="{{ s.query }}">
+    <small>Gmail-Suchsyntax, z. B. <code>from:buchhaltung@firma.de</code> oder <code>filename:pdf</code>. Das Datum wird automatisch ergänzt.</small></label>
+  <div class="row">
+    <label>Zeitfenster (Tage) <input type="number" min="1" name="lookback_days" value="{{ s.lookback_days }}"></label>
+    <label>Dateiendungen <input name="extensions" value="{{ s.extensions|join(', ') }}"><small>erlaubt: .pdf, .xml, .jpg, .png</small></label>
+    <label>Mindestgröße (Bytes) <input type="number" min="0" name="min_size_bytes" value="{{ s.min_size_bytes }}"><small>filtert Signatur-Logos</small></label>
+  </div>
+
+  <h2>Verarbeitung</h2>
+  <label>Modus
+    <select name="mode">
+      <option value="review" {% if s.mode == 'review' %}selected{% endif %}>Alles zur Prüfung vorlegen (Regel „Immer“ lädt direkt hoch)</option>
+      <option value="auto" {% if s.mode == 'auto' %}selected{% endif %}>Eindeutige Rechnungen automatisch hochladen, Rest prüfen</option>
+    </select></label>
+  <div class="row">
+    <label>Mindest-Score für Automatik <input type="number" min="1" name="auto_threshold" value="{{ s.auto_threshold }}"><small>nur im Modus „automatisch“</small></label>
+    <label>Abruf alle … Minuten <input type="number" min="0" name="interval_minutes" value="{{ s.interval_minutes }}"><small>0 = nur manuell</small></label>
+    <label>Gmail-Label nach Upload <input name="label" value="{{ s.label }}"><small>leer = kein Label</small></label>
+  </div>
+
+  <h2>Lexware Office</h2>
+  <label>API-Key
+    <input type="password" name="lexware_api_key" autocomplete="off"
+           placeholder="{{ 'über Umgebungsvariable gesetzt' if key_from_env else ('gesetzt – leer lassen zum Behalten' if s.lexware_api_key else 'noch nicht gesetzt') }}"
+           {% if key_from_env %}disabled{% endif %}></label>
+
+  <button class="primary">Speichern</button>
+</form>
+{% endblock %}

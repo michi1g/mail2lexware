@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>workspace2lexware</Name>
+  <Repository>ghcr.io/michi1g/workspace2lexware:latest</Repository>
+  <Registry>https://github.com/michi1g/workspace2lexware/pkgs/container/workspace2lexware</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/michi1g/workspace2lexware/issues</Support>
+  <Project>https://github.com/michi1g/workspace2lexware</Project>
+  <Overview>Überträgt Rechnungs-Anhänge aus Gmail / Google Workspace per API in den Belege-Eingang von Lexware Office. Web-GUI zum Prüfen, Verlauf und Absender-Regeln.</Overview>
+  <Category>Productivity: Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <Config Name="WebUI-Port" Target="8080" Default="8080" Mode="tcp" Description="Port der Web-GUI" Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="Daten" Target="/data" Default="/mnt/user/appdata/workspace2lexware" Mode="rw" Description="Einstellungen, Token, Datenbank und Beleg-Dateien" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/workspace2lexware</Config>
+  <Config Name="GUI-Passwort" Target="GUI_PASSWORD" Default="" Mode="" Description="Passwort für die Web-GUI (dringend empfohlen)" Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="Lexware API-Key" Target="LEXWARE_API_KEY" Default="" Mode="" Description="Optional. Alternativ in der GUI unter Einstellungen eintragen." Type="Variable" Display="advanced" Required="false" Mask="true"></Config>
+  <Config Name="Zeitzone" Target="TZ" Default="Europe/Berlin" Mode="" Description="Zeitzone für Anzeige und Zeitplan" Type="Variable" Display="advanced" Required="false" Mask="false">Europe/Berlin</Config>
+</Container>

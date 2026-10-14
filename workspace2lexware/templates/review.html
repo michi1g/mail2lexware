@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1>Zu prüfen <span class="muted">({{ pending|length }})</span></h1>
+  <div class="grow"></div>
+  {% if last_run %}
+    <span class="muted">
+      Letzter Durchlauf: {{ last_run.time|dt }} · {{ last_run.new }} neu, {{ last_run.uploaded }} hochgeladen
+      {%- if last_run.failed %}, {{ last_run.failed }} Fehler{% endif %}
+    </span>
+  {% endif %}
+  <form method="post" action="{{ url_for('run') }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button {% if running %}disabled{% endif %}>{{ 'Läuft …' if running else 'Jetzt prüfen' }}</button>
+  </form>
+</div>
+{% if last_run and last_run.error %}<div class="flash error">{{ last_run.error }}</div>{% endif %}
+
+{% macro doc_table(docs, with_error=false) %}
+<table>
+  <thead><tr>
+    <th><input type="checkbox" data-toggle-all aria-label="Alle auswählen"></th>
+    <th>Absender / Betreff</th><th>Datei</th><th>Datum</th><th title="Wie sehr der Inhalt nach einer Rechnung aussieht">Score</th>
+  </tr></thead>
+  <tbody>
+  {% for d in docs %}
+    <tr data-preview="{{ url_for('file', doc_id=d.id) }}" data-ext="{{ d.filename.rsplit('.', 1)[-1]|lower }}">
+      <td><input type="checkbox" name="ids" value="{{ d.id }}"></td>
+      <td><strong>{{ d.sender }}</strong> <span class="muted">{{ d.sender_email }}</span><br>{{ d.subject }}
+        {% if with_error and d.error %}<br><span class="err">{{ d.error }}</span>{% endif %}</td>
+      <td>{{ d.filename }}<br><span class="muted">{{ d.size|kb }}</span></td>
+      <td>{{ d.mail_date|dt }}</td>
+      <td><span class="score s{{ 'hi' if d.score >= 3 else 'lo' }}">{{ d.score }}</span></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% if pending or failed %}
+<div class="split">
+  <form method="post" action="{{ url_for('review_action') }}" class="list">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="toolbar sticky">
+      <button name="action" value="upload" class="primary">Hochladen</button>
+      <button name="action" value="ignore">Ignorieren</button>
+      <button name="action" value="always" title="Regel anlegen: Belege dieses Absenders künftig automatisch hochladen">Absender: immer hochladen</button>
+      <button name="action" value="never" title="Regel anlegen: Belege dieses Absenders künftig ignorieren">Absender: nie</button>
+    </div>
+    {% if failed %}<h2>Fehlgeschlagen</h2>{{ doc_table(failed, true) }}{% endif %}
+    {% if pending %}{{ doc_table(pending) }}{% endif %}
+  </form>
+  <aside class="preview">
+    <p class="muted" id="preview-hint">Zeile anklicken für die Vorschau.</p>
+    <iframe id="preview" title="Vorschau" hidden></iframe>
+  </aside>
+</div>
+{% else %}
+<p class="empty">Nichts zu prüfen. {{ counts.get('uploaded', 0) }} Belege wurden bisher hochgeladen.</p>
+{% endif %}
+
+<script>
+  const frame = document.getElementById('preview'), hint = document.getElementById('preview-hint');
+  document.querySelectorAll('tr[data-preview]').forEach(tr => tr.addEventListener('click', e => {
+    if (e.target.tagName === 'INPUT') return;
+    document.querySelectorAll('tr.sel').forEach(r => r.classList.remove('sel'));
+    tr.classList.add('sel');
+    if (['pdf', 'jpg', 'jpeg', 'png', 'xml'].includes(tr.dataset.ext)) { frame.src = tr.dataset.preview; frame.hidden = true; frame.hidden = false; hint.hidden = true; }
+  }));
+  const all = document.querySelector('[data-toggle-all]');
+  if (all) all.addEventListener('change', () => document.querySelectorAll('input[name=ids]').forEach(c => c.checked = all.checked));
+</script>
+{% endblock %}

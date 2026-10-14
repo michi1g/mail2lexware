@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Absender-Regeln</h1>
+<p class="muted">Eine Adresse (<code>rechnung@firma.de</code>) oder Domain (<code>firma.de</code>). Eine exakte Adresse hat Vorrang vor der Domain.
+„Immer“ lädt Belege automatisch hoch, „Nie“ ignoriert sie.</p>
+<form method="post" action="{{ url_for('rules_add') }}" class="inline">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input name="pattern" placeholder="adresse@domain.de oder domain.de" required>
+  <select name="action"><option value="always">Immer hochladen</option><option value="never">Nie hochladen</option></select>
+  <button class="primary">Hinzufügen</button>
+</form>
+<table>
+  <thead><tr><th>Absender</th><th>Aktion</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rules %}
+    <tr>
+      <td>{{ r.pattern }}</td>
+      <td>{{ 'Immer hochladen' if r.action == 'always' else 'Nie hochladen' }}</td>
+      <td><form method="post" action="{{ url_for('rules_delete', rule_id=r.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Löschen</button></form></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="3" class="empty">Noch keine Regeln.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Verlauf</h1>
+<div class="tabs">
+  <a href="{{ url_for('history') }}" {% if not current %}class="active"{% endif %}>Alle</a>
+  {% for key, label in status_labels.items() %}
+    <a href="{{ url_for('history', status=key) }}" {% if current == key %}class="active"{% endif %}>{{ label }} ({{ counts.get(key, 0) }})</a>
+  {% endfor %}
+</div>
+<table>
+  <thead><tr><th>Datum</th><th>Absender / Betreff</th><th>Datei</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for d in docs %}
+    <tr>
+      <td>{{ d.mail_date|dt }}</td>
+      <td><strong>{{ d.sender }}</strong><br>{{ d.subject }}</td>
+      <td><a href="{{ url_for('file', doc_id=d.id) }}" target="_blank">{{ d.filename }}</a></td>
+      <td><span class="badge {{ d.status }}">{{ status_labels[d.status] }}</span>
+        {% if d.error %}<br><span class="err">{{ d.error }}</span>{% endif %}
+        {% if d.lexware_id %}<br><span class="muted">{{ d.lexware_id }}</span>{% endif %}</td>
+      <td>
+        {% if d.status in ('failed', 'ignored') %}
+        <form method="post" action="{{ url_for('review_action') }}">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input type="hidden" name="ids" value="{{ d.id }}">
+          {% if d.status == 'failed' %}<button name="action" value="upload">Erneut versuchen</button>
+          {% else %}<button name="action" value="requeue">Zur Prüfung</button>{% endif %}
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="empty">Keine Einträge.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

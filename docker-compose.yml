@@ -1,0 +1,14 @@
+services:
+  workspace2lexware:
+    image: ghcr.io/michi1g/workspace2lexware:latest
+    # build: .   # zum lokalen Bauen statt Image aus der Registry
+    container_name: workspace2lexware
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Europe/Berlin
+      GUI_PASSWORD: "bitte-aendern"
+      # LEXWARE_API_KEY: ""   # optional; alternativ in der GUI unter Einstellungen
+    volumes:
+      - /mnt/user/appdata/workspace2lexware:/data

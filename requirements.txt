@@ -1,0 +1,6 @@
+flask>=3.0
+waitress>=3.0
+pypdf>=5.0
+requests>=2.32
+google-api-python-client>=2.140
+google-auth-oauthlib>=1.2

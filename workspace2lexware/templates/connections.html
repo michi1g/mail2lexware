@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Verbindungen</h1>
+
+<section class="card">
+  <h2>Gmail / Google Workspace
+    {% if gmail_email %}<span class="badge uploaded">verbunden</span>{% else %}<span class="badge failed">nicht verbunden</span>{% endif %}</h2>
+
+  {% if gmail_email %}
+    <p>Angemeldet als <strong>{{ gmail_email }}</strong>.</p>
+    <form method="post" action="{{ url_for('gmail_disconnect') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Verbindung trennen</button></form>
+  {% else %}
+    {% if gmail_error %}<div class="flash error">{{ gmail_error }}</div>{% endif %}
+    <ol>
+      <li>
+        <strong>OAuth-Client hochladen</strong> – Typ „Desktop-App“ aus der Google Cloud Console (<code>credentials.json</code>)
+        {% if has_credentials %}<span class="badge uploaded">vorhanden</span>{% endif %}
+        <form method="post" action="{{ url_for('upload_credentials') }}" enctype="multipart/form-data" class="inline">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input type="file" name="file" accept=".json" required><button>Hochladen</button>
+        </form>
+      </li>
+      <li>
+        <strong>Bei Google anmelden</strong>
+        <form method="post" action="{{ url_for('gmail_start') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button {% if not has_credentials %}disabled{% endif %}>Login-Link erzeugen</button></form>
+        {% if auth_url %}
+          <p><a href="{{ auth_url }}" target="_blank" rel="noopener" class="primary-link">Bei Google anmelden ↗</a></p>
+          <p class="muted">Nach der Zustimmung öffnet Google eine Seite unter <code>localhost</code>, die <em>nicht lädt</em> – das ist normal.
+            Kopiere die komplette Adresse aus der Adresszeile und füge sie unten ein.</p>
+        {% endif %}
+      </li>
+      <li>
+        <strong>Adresse einfügen</strong>
+        <form method="post" action="{{ url_for('gmail_finish') }}" class="inline">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input name="pasted" placeholder="http://localhost:8080/?state=…&code=…" required><button class="primary">Verbinden</button>
+        </form>
+      </li>
+    </ol>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Lexware Office
+    {% if has_key %}<span class="badge uploaded">API-Key gesetzt</span>{% else %}<span class="badge failed">kein API-Key</span>{% endif %}</h2>
+  <p class="muted">Den Key trägst du unter Einstellungen ein.</p>
+  <form method="post" action="{{ url_for('lexware_test') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Verbindung testen</button></form>
+</section>
+{% endblock %}
