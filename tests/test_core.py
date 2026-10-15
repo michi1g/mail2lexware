@@ -64,11 +64,12 @@ def test_lexware_test_connection_403_fallback(monkeypatch):
 
     def client(profile, countries):
         c = LexwareClient("k")
-        c.session.get = lambda url, timeout: profile if url.endswith("/profile") else countries
+        c.session.get = lambda url, timeout, params=None: profile if url.endswith("/profile") else countries
         return c
 
     assert client(R(200, {"companyName": "Muster GmbH"}), R(200)).test_connection() == "Muster GmbH"
     assert client(R(403), R(200)).test_connection() == ""
+    assert client(R(403), R(400)).test_connection() == ""
     with pytest.raises(LexwareError, match="Tarif XL"):
         client(R(403), R(403)).test_connection()
     with pytest.raises(LexwareError, match="ungültig"):

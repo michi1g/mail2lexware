@@ -18,8 +18,9 @@ class LexwareClient:
     def test_connection(self) -> str:
         """Prüft den API-Key und gibt den Firmennamen zurück (leer, wenn das Profil nicht lesbar ist).
 
-        Erst /profile, bei 403 ein weiterer lesender Endpunkt: Manche Keys dürfen das Profil nicht lesen,
-        obwohl sie gültig sind. Ob der Upload erlaubt ist, zeigt sich erst beim ersten Beleg.
+        Erst /profile. Ein Key nur mit Beleg-Rechten (Belegbilder hochladen, Belege abrufen und speichern) darf das
+        Profil nicht lesen. Dann wird die Belegliste abgefragt, die genau zu diesen Rechten gehört. Ob der Upload
+        selbst klappt, zeigt sich erst beim ersten Beleg.
         """
         resp = self.session.get(f"{self.base_url}/profile", timeout=20)
         if resp.ok:
@@ -27,14 +28,19 @@ class LexwareClient:
         if resp.status_code == 401:
             raise LexwareError("Der API-Key ist ungültig (HTTP 401). Erzeuge in Lexware einen neuen Key.")
         if resp.status_code == 403:
-            fallback = self.session.get(f"{self.base_url}/countries", timeout=20)
-            if fallback.ok:
+            fallback = self.session.get(
+                f"{self.base_url}/voucherlist",
+                params={"voucherType": "any", "voucherStatus": "any", "size": 1},
+                timeout=20,
+            )
+            if fallback.ok or fallback.status_code == 400:  # 400 kommt erst nach der Rechteprüfung
                 return ""
             if fallback.status_code == 401:
                 raise LexwareError("Der API-Key ist ungültig (HTTP 401). Erzeuge in Lexware einen neuen Key.")
             raise LexwareError(
                 "Lexware lehnt den Zugriff ab (HTTP 403). Die Public API gibt es nur im Tarif XL, und der Key "
-                "braucht ausreichende Rechte. Prüfe beides in Lexware unter Einstellungen > Public API."
+                "braucht mindestens die Rechte „Belegbilder hochladen“ und „Belege abrufen“. Prüfe beides in Lexware unter "
+                "Einstellungen > Public API."
             )
         raise LexwareError(f"HTTP {resp.status_code} {resp.text[:200]}")
 
