@@ -9,7 +9,8 @@ Die Bedienung läuft über eine Web-GUI. Das Tool ist als Docker-Container gedac
 - **Prüfen:** Gefundene Anhänge mit PDF-Vorschau, Auswahl per Häkchen oder Tastatur (Pfeiltasten, `x`), dann hochladen oder ignorieren.
 - **Erkennung:** Der PDF-Text wird auf Rechnungsmerkmale geprüft (Rechnungsnummer, IBAN, MwSt …) und mit einem Score bewertet. XRechnung/ZUGFeRD-XML zählt immer als Rechnung.
 - **Modus:** „Alles prüfen“ oder „eindeutige Rechnungen automatisch hochladen, Rest prüfen“.
-- **Absender-Regeln:** pro Adresse oder Domain „immer hochladen“ oder „nie“.
+- **Regeln:** „immer hochladen“ oder „nie“, nach Absender (Adresse oder Domain), nach Dateiname oder nach Betreff (Textteil, z. B. „AGB“). „Nie“ gewinnt immer.
+- **Filter beim Prüfen:** die Liste „Zu prüfen“ lässt sich auf „Rechnung“ oder „Unsicher“ eingrenzen.
 - **Zeitraum:** letzte N Tage, dieses Jahr, letztes Jahr oder ein eigener Zeitraum von-bis.
 - **Postfächer:** Gmail / Google Workspace (OAuth), IMAP mit Voreinstellungen (GMX, WEB.DE, T-Online, IONOS, STRATO, Posteo, mailbox.org, iCloud, Yahoo) oder „Eigener Eintrag“, Microsoft 365 und Outlook (OAuth). Mehrere Postfächer gleichzeitig sind möglich.
 - **Nur lesend:** IMAP-Ordner werden schreibgeschützt geöffnet. Nichts wird markiert, verschoben oder gelöscht. Bei Gmail setzt das Tool optional ein Label.

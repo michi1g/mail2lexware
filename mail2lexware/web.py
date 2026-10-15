@@ -10,7 +10,7 @@ from pathlib import Path
 from flask import (Flask, abort, flash, jsonify, redirect, render_template, request, send_file, session, url_for)
 from markupsafe import Markup
 
-from . import config, db, gmail, imap_source, microsoft, providers, scheduler, secrets_store, service
+from . import config, db, detect, gmail, imap_source, microsoft, providers, scheduler, secrets_store, service
 from .lexware import LexwareClient, LexwareError
 
 OPEN_ENDPOINTS = {"health", "login", "static"}
@@ -155,12 +155,25 @@ def create_app(start_scheduler: bool = True) -> Flask:
     # --- Prüfen -----------------------------------------------------------
     @app.get("/review")
     def review():
+        pending = db.list_documents("pending")
+        n_invoice = sum(1 for d in pending if d["score"] >= detect.INVOICE_MIN)
+        n_unsure = len(pending) - n_invoice
+        current = request.args.get("filter")
+        if current == "invoice":
+            pending = [d for d in pending if d["score"] >= detect.INVOICE_MIN]
+        elif current == "unsure":
+            pending = [d for d in pending if d["score"] < detect.INVOICE_MIN]
+        else:
+            current = None
         return render_template(
             "review.html",
-            pending=db.list_documents("pending"),
+            pending=pending,
             failed=db.list_documents("failed"),
             last_run=db.kv_get("last_run"),
             counts=db.counts(),
+            invoice_min=detect.INVOICE_MIN,
+            current=current,
+            filter_counts={"all": n_invoice + n_unsure, "invoice": n_invoice, "unsure": n_unsure},
         )
 
     @app.post("/review/action")
@@ -233,10 +246,21 @@ def create_app(start_scheduler: bool = True) -> Flask:
     def rules_add():
         pattern = request.form.get("pattern", "").strip().lower()
         action = request.form.get("action")
-        if pattern and action in ("always", "never"):
-            db.add_rule(pattern, action)
+        field = request.form.get("field", "sender")
+        if pattern and action in ("always", "never") and field in db.RULE_FIELDS:
+            db.add_rule(pattern, action, field)
         else:
-            flash("Bitte Adresse/Domain und Aktion angeben.", "error")
+            flash("Bitte Regeltyp, Text und Aktion angeben.", "error")
+        return redirect(url_for("rules"))
+
+    @app.post("/rules/apply")
+    def rules_apply():
+        r = service.apply_rules()
+        if r["error"]:
+            flash(f"{r['ignored']} ignoriert. {r['error']}", "error")
+        else:
+            flash(f"{r['ignored']} ignoriert, {r['uploaded']} hochgeladen"
+                  + (f", {r['failed']} fehlgeschlagen" if r["failed"] else "") + ".", "error" if r["failed"] else "ok")
         return redirect(url_for("rules"))
 
     @app.post("/rules/delete/<int:rule_id>")

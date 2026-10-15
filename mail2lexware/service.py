@@ -46,13 +46,13 @@ def _ingest(mail, settings: dict, account_id: str, source: str) -> tuple[int, li
     """Legt die Anhänge einer Mail in der DB an. Gibt (Anzahl neu, IDs für direkten Upload) zurück."""
     new = 0
     upload_ids: list[int] = []
-    rule = db.match_rule(mail.sender_email)
     for att in mail.attachments:
         sha = hashlib.sha256(att.data).hexdigest()
         ext = Path(att.filename).suffix.lower()
         path = config.FILES_DIR / (sha + ext)
         if not path.exists():
             path.write_bytes(att.data)
+        rule = db.match_rule(mail.sender_email, att.filename, mail.subject)
         points = detect.score(att.filename, detect.extract_text(att.data, ext), ext)
 
         auto = rule == "always" or (rule is None and settings["mode"] == "auto"
@@ -199,6 +199,23 @@ def run_cycle() -> dict:
         _lock.release()
     result["error"] = " | ".join(errors) or None
     db.kv_set("last_run", result)
+    return result
+
+
+def apply_rules() -> dict:
+    """Wendet die Regeln auf die offenen Belege an: "nie" ignoriert, "immer" lädt hoch."""
+    result = {"ignored": 0, "uploaded": 0, "failed": 0, "error": None}
+    upload: list[int] = []
+    for d in db.list_documents("pending", limit=100_000):
+        rule = db.match_rule(d["sender_email"], d["filename"], d["subject"])
+        if rule == "never":
+            db.set_status(d["id"], "ignored")
+            result["ignored"] += 1
+        elif rule == "always":
+            upload.append(d["id"])
+    if upload:
+        r = upload_ids(upload)
+        result.update(uploaded=r["uploaded"], failed=r["failed"], error=r["error"])
     return result
 
 

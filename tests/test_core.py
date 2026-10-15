@@ -40,6 +40,60 @@ def test_rules_exact_beats_domain():
     assert db.match_rule("x@andere.de") is None
 
 
+def test_rules_filename_and_subject():
+    db.init()
+    db.add_rule("agb", "never", "filename")
+    db.add_rule("mahnung", "never", "subject")
+    db.add_rule("rechnung", "always", "filename")
+    db.add_rule("vip.de", "always")
+    assert db.match_rule("x@vip.de", "AGB_2026.pdf", "Hallo") == "never"  # Dateiname schlägt Absender-"always"
+    assert db.match_rule("x@vip.de", "scan.pdf", "Letzte MAHNUNG") == "never"
+    assert db.match_rule("x@fremd.de", "Rechnung_1.pdf", "Hallo") == "always"
+    assert db.match_rule("x@fremd.de", "Rechnung_AGB.pdf", "Hallo") == "never"
+    assert db.match_rule("x@fremd.de", "scan.pdf", "Hallo") is None
+
+
+def test_rules_migration_from_old_schema(tmp_path, monkeypatch):
+    import sqlite3
+    from mail2lexware import config
+    old = tmp_path / "old.db"
+    c = sqlite3.connect(old)
+    c.execute("CREATE TABLE rules (id INTEGER PRIMARY KEY, pattern TEXT UNIQUE NOT NULL, action TEXT NOT NULL)")
+    c.execute("INSERT INTO rules (pattern, action) VALUES ('alt.de', 'never')")
+    c.commit(); c.close()
+    monkeypatch.setattr(config, "DB_FILE", old)
+    db.init()
+    assert [(r["field"], r["pattern"], r["action"]) for r in db.list_rules()] == [("sender", "alt.de", "never")]
+
+
+def test_review_filter(client):
+    db.init()
+    for key, score in (("f-hi", 5), ("f-lo", 0)):
+        db.add_document(msg_key=key, message_id=key, sha256=key, filename=f"{key}.pdf", mime_type="application/pdf",
+                        size=1, status="pending", score=score)
+    all_page = client.get("/review").get_data(as_text=True)
+    assert "f-hi.pdf" in all_page and "f-lo.pdf" in all_page
+    inv = client.get("/review?filter=invoice").get_data(as_text=True)
+    assert "f-hi.pdf" in inv and "f-lo.pdf" not in inv
+    unsure = client.get("/review?filter=unsure").get_data(as_text=True)
+    assert "f-lo.pdf" in unsure and "f-hi.pdf" not in unsure
+
+
+def test_apply_rules_to_pending(monkeypatch):
+    from mail2lexware import service
+    db.init()
+    for key, name in (("ar-agb", "AGB.pdf"), ("ar-inv", "scan.pdf"), ("ar-other", "foto.pdf")):
+        db.add_document(msg_key=key, message_id=key, sha256=key, filename=name, mime_type="application/pdf",
+                        size=1, status="pending", sender_email="x@applytest.de", subject="s")
+    db.add_rule("agb", "never", "filename")
+    db.add_rule("scan", "always", "filename")
+    monkeypatch.setattr(service, "upload_ids", lambda ids: {"uploaded": len(ids), "failed": 0, "error": None})
+    r = service.apply_rules()
+    status = {d["msg_key"]: d["status"] for d in db.list_documents()}
+    assert status["ar-agb"] == "ignored" and status["ar-other"] == "pending"
+    assert r["ignored"] >= 1 and r["uploaded"] >= 1
+
+
 def test_label_only_when_all_docs_resolved():
     def doc(key, status):
         db.add_document(msg_key=key, message_id="m1", sha256=key, filename="a.pdf", mime_type="application/pdf",

@@ -4,7 +4,7 @@
 <div class="page-head rise">
   <div class="grow">
     <h1>Absender-Regeln</h1>
-    <p class="lead">Lege pro Adresse oder Domain fest, was mit Belegen passiert. Eine exakte Adresse hat Vorrang vor einer Domain.</p>
+    <p class="lead">Lege fest, was mit Belegen passiert: nach Absender (Adresse oder Domain), nach Dateiname oder nach Betreff. Bei Dateiname und Betreff genügt ein Textteil ohne Beachtung der Groß-/Kleinschreibung, z. B. „AGB“. Eine exakte Absenderadresse hat Vorrang vor einer Domain, „Nie hochladen“ gewinnt immer.</p>
   </div>
 </div>
 
@@ -12,8 +12,18 @@
   <form method="post" action="{{ url_for('rules_add') }}" class="rule-add">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <div class="field">
-      <label for="pattern">Adresse oder Domain</label>
-      <input id="pattern" name="pattern" placeholder="buchhaltung@lieferant.de oder lieferant.de" autocomplete="off" required>
+      <label for="field">Regel für</label>
+      <div class="select-wrap">
+        <select id="field" name="field">
+          <option value="sender">Absender</option>
+          <option value="filename">Dateiname enthält</option>
+          <option value="subject">Betreff enthält</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="pattern">Adresse, Domain oder Text</label>
+      <input id="pattern" name="pattern" placeholder="lieferant.de oder AGB" autocomplete="off" required>
     </div>
     <div class="field">
       <label for="action">Aktion</label>
@@ -28,9 +38,14 @@
   </form>
 
   {% if rules %}
+  <form method="post" action="{{ url_for('rules_apply') }}" class="rule-apply" data-confirm="Regeln jetzt auf alle offenen Belege anwenden? „Immer“-Treffer werden zu Lexware hochgeladen, „Nie“-Treffer ignoriert.">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="btn" data-loading>{{ icon('arrows-clockwise') }}Auf offene Belege anwenden</button>
+  </form>
   <ul class="list-plain">
     {% for r in rules %}
     <li class="rule-row">
+      <span class="rule-kind">{{ {'sender': 'Absender', 'filename': 'Dateiname enthält', 'subject': 'Betreff enthält'}[r.field] }}</span>
       <span class="pattern">{{ r.pattern }}</span>
       {% if r.action == 'always' %}
         <span class="chip ok">{{ icon('upload-simple', 'bold') }}Immer hochladen</span>

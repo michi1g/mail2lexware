@@ -498,9 +498,12 @@ a.choice .choice-body { height: 100%; }
 .callout { margin-top: 12px; padding: 11px 14px; border-radius: var(--r-md); background: var(--neutral-bg); color: var(--neutral-fg); font-size: 13.5px; }
 
 /* ---------- Regeln ---------- */
-.rule-add { display: grid; grid-template-columns: minmax(0, 1fr) 220px auto; gap: 12px; align-items: end; padding: 18px; border-bottom: 1px solid var(--line); }
+.rule-add { display: grid; grid-template-columns: 200px minmax(0, 1fr) 220px auto; gap: 12px; align-items: end; padding: 18px; border-bottom: 1px solid var(--line); }
 .rule-row { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+.rule-apply { padding: 12px 18px; border-bottom: 1px solid var(--line); }
 .rule-row:last-child { border-bottom: 0; }
+.rule-row .rule-kind { flex: none; width: 140px; font-size: 13px; color: var(--text-3); }
+.doc-none { padding: 24px 18px; text-align: center; list-style: none; }
 .rule-row .pattern { flex: 1; font-family: var(--mono); font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .list-plain { list-style: none; margin: 0; padding: 0; }
 

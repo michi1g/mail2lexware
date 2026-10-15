@@ -13,6 +13,7 @@ MEDIUM = [
     "gesamtbetrag", "rechnungsbetrag", "zahlbetrag", "fälligkeit", "zahlungsziel", "nettobetrag",
     "bruttobetrag", "vat", "total amount",
 ]
+INVOICE_MIN = 3  # ab dieser Punktzahl gilt ein Beleg in der Prüfliste als "Rechnung", darunter als "Unsicher"
 NEGATIVE = ["allgemeine geschäftsbedingungen", "widerrufsbelehrung", "datenschutzerklärung", "newsletter"]
 XML_MARKERS = ("crossindustryinvoice", "<invoice", "xrechnung", "urn:cen.eu:en16931")
 

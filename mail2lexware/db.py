@@ -32,8 +32,10 @@ CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
 CREATE TABLE IF NOT EXISTS messages (message_id TEXT PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS rules (
     id INTEGER PRIMARY KEY,
-    pattern TEXT UNIQUE NOT NULL,  -- E-Mail-Adresse oder Domain
-    action TEXT NOT NULL           -- always | never
+    field TEXT NOT NULL DEFAULT 'sender',  -- sender | filename | subject
+    pattern TEXT NOT NULL,         -- sender: E-Mail-Adresse oder Domain, sonst Textbaustein (Teilstring)
+    action TEXT NOT NULL,          -- always | never
+    UNIQUE (field, pattern)
 );
 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS accounts (
@@ -81,6 +83,15 @@ def init() -> None:
             c.execute("ALTER TABLE documents ADD COLUMN account_id TEXT NOT NULL DEFAULT 'google'")
         if "source" not in cols:
             c.execute("ALTER TABLE documents ADD COLUMN source TEXT NOT NULL DEFAULT 'Gmail'")
+        rule_cols = {r["name"] for r in c.execute("PRAGMA table_info(rules)")}
+        if "field" not in rule_cols:  # Migration: bisherige Regeln gelten für den Absender
+            c.executescript(
+                "ALTER TABLE rules RENAME TO rules_old;"
+                "CREATE TABLE rules (id INTEGER PRIMARY KEY, field TEXT NOT NULL DEFAULT 'sender', "
+                "pattern TEXT NOT NULL, action TEXT NOT NULL, UNIQUE (field, pattern));"
+                "INSERT INTO rules (id, field, pattern, action) SELECT id, 'sender', pattern, action FROM rules_old;"
+                "DROP TABLE rules_old;"
+            )
 
 
 # --- Dokumente -------------------------------------------------------------
@@ -220,12 +231,15 @@ def list_rules():
         return c.execute("SELECT * FROM rules ORDER BY pattern").fetchall()
 
 
-def add_rule(pattern: str, action: str) -> None:
+RULE_FIELDS = ("sender", "filename", "subject")
+
+
+def add_rule(pattern: str, action: str, field: str = "sender") -> None:
     with conn() as c:
         c.execute(
-            "INSERT INTO rules (pattern, action) VALUES (?, ?) "
-            "ON CONFLICT(pattern) DO UPDATE SET action=excluded.action",
-            (pattern.strip().lower(), action),
+            "INSERT INTO rules (field, pattern, action) VALUES (?, ?, ?) "
+            "ON CONFLICT(field, pattern) DO UPDATE SET action=excluded.action",
+            (field, pattern.strip().lower(), action),
         )
 
 
@@ -234,18 +248,32 @@ def delete_rule(rule_id: int) -> None:
         c.execute("DELETE FROM rules WHERE id=?", (rule_id,))
 
 
-def match_rule(sender_email: str) -> str | None:
-    """Exakte Adresse hat Vorrang vor einer Domain-Regel."""
+def match_rule(sender_email: str, filename: str = "", subject: str = "") -> str | None:
+    """Regel für einen Anhang: always | never | None.
+
+    Beim Absender hat die exakte Adresse Vorrang vor einer Domain. Regeln für Dateiname und Betreff
+    (Teilstring, ohne Groß-/Kleinschreibung) ergänzen das, und "never" gewinnt immer.
+    """
     email = (sender_email or "").lower()
     domain = email.rsplit("@", 1)[-1]
-    best = None
+    texts = {"filename": (filename or "").lower(), "subject": (subject or "").lower()}
+    exact = by_domain = None
+    content = set()
     for r in list_rules():
         p = r["pattern"]
-        if p == email:
-            return r["action"]
-        if p.lstrip("@") == domain and "@" not in p.lstrip("@"):
-            best = r["action"]
-    return best
+        if r["field"] == "sender":
+            if p == email:
+                exact = r["action"]
+            elif p.lstrip("@") == domain and "@" not in p.lstrip("@"):
+                by_domain = r["action"]
+        elif p in texts.get(r["field"], ""):
+            content.add(r["action"])
+    sender_action = exact or by_domain
+    if "never" in content or sender_action == "never":
+        return "never"
+    if "always" in content:
+        return "always"
+    return sender_action
 
 
 # --- Key/Value -------------------------------------------------------------

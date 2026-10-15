@@ -27,7 +27,7 @@
     <a class="btn btn-quiet btn-icon doc-open" href="{{ url_for('file', doc_id=d.id) }}" target="_blank" rel="noopener" aria-label="{{ d.filename }} öffnen">{{ icon('arrow-square-out') }}</a>
     {% if failed %}
       <span class="chip err">{{ icon('warning-circle', 'fill') }}Fehlgeschlagen</span>
-    {% elif d.score >= 3 %}
+    {% elif d.score >= invoice_min %}
       <span class="chip ok" title="Der Inhalt enthält typische Rechnungsmerkmale">{{ icon('check-circle', 'fill') }}Rechnung <span class="score">{{ d.score }}</span></span>
     {% else %}
       <span class="chip warn" title="Wenige Rechnungsmerkmale im Inhalt, bitte ansehen">{{ icon('info', 'fill') }}Unsicher <span class="score">{{ d.score }}</span></span>
@@ -41,7 +41,7 @@
   <div class="grow">
     <h1>Zu prüfen</h1>
     <p class="lead">
-      {% if pending or failed %}
+      {% if filter_counts.all or failed %}
         Sieh dir die Belege an, wähle aus und lade sie nach Lexware Office hoch.
       {% else %}
         Neue Rechnungen aus Gmail erscheinen hier, bevor sie nach Lexware gehen.
@@ -77,7 +77,14 @@
   </div>
 {% endif %}
 
-{% if pending or failed %}
+{% if filter_counts.all or failed %}
+{% if filter_counts.all %}
+<nav class="segmented rise" style="--i: 1" aria-label="Belege filtern">
+  <a href="{{ url_for('review') }}" {% if not current %}aria-current="true"{% endif %}>Alle <span class="n">{{ filter_counts.all }}</span></a>
+  <a href="{{ url_for('review', filter='invoice') }}" {% if current == 'invoice' %}aria-current="true"{% endif %}>Rechnung <span class="n">{{ filter_counts.invoice }}</span></a>
+  <a href="{{ url_for('review', filter='unsure') }}" {% if current == 'unsure' %}aria-current="true"{% endif %}>Unsicher <span class="n">{{ filter_counts.unsure }}</span></a>
+</nav>
+{% endif %}
 <form id="review-form" method="post" action="{{ url_for('review_action') }}">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   <div class="review-grid">
@@ -89,6 +96,7 @@
       <ul class="doc-list">
         {% for d in failed %}{{ doc_row(d, loop.index0 + 2, true) }}{% endfor %}
         {% for d in pending %}{{ doc_row(d, loop.index0 + failed|length + 2) }}{% endfor %}
+        {% if not pending and not failed %}<li class="doc-none muted">In dieser Ansicht gibt es keine Belege.</li>{% endif %}
       </ul>
     </section>
 
