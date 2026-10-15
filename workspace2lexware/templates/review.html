@@ -18,6 +18,7 @@
       {% if d.sender and d.sender_email %}<span class="doc-email">{{ d.sender_email }}</span>{% endif %}
     </div>
     <span class="doc-subject">{{ d.subject or 'Ohne Betreff' }}</span>
+    {% if has_accounts %}<span class="doc-source">{{ icon('envelope-simple') }}{{ d.source }}</span>{% endif %}
     <span class="doc-file">{{ d.filename }} · {{ d.size|kb }}</span>
     {% if failed and d.error %}<span class="doc-error">{{ d.error }}</span>{% endif %}
   </div>

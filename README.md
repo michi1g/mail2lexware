@@ -1,6 +1,6 @@
 # workspace2lexware
 
-Überträgt Rechnungs-Anhänge (PDF, XRechnung/ZUGFeRD-XML, optional Bilder) aus Gmail / Google Workspace per API in den Belege-Eingang („Zu prüfen“) von Lexware Office. Bedienung über eine Web-GUI, gedacht für den Betrieb als Docker-Container (z. B. auf Unraid) im Heimnetz.
+Überträgt Rechnungs-Anhänge (PDF, XRechnung/ZUGFeRD-XML, optional Bilder) aus Gmail / Google Workspace, IMAP-Postfächern und Microsoft 365 per API in den Belege-Eingang („Zu prüfen“) von Lexware Office. Bedienung über eine Web-GUI, gedacht für den Betrieb als Docker-Container (z. B. auf Unraid) im Heimnetz.
 
 ## Funktionen
 
@@ -12,6 +12,8 @@
 - **Absender-Regeln:** pro Adresse oder Domain „immer hochladen“ oder „nie“.
 - **Verlauf** mit Status, Fehlermeldungen und „Erneut versuchen“.
 - **Gmail-Label** nach erfolgreichem Upload; die Mail wird bei späteren Läufen übersprungen.
+- **Weitere Postfächer:** IMAP mit Voreinstellungen (GMX, WEB.DE, T-Online, IONOS, STRATO, Posteo, mailbox.org, iCloud, Yahoo) oder „Eigener Eintrag“, außerdem Microsoft 365 und Outlook per OAuth. Mails werden nur gelesen: IMAP-Ordner werden schreibgeschützt geöffnet, nichts wird markiert, verschoben oder gelöscht. Den Stand merkt sich nur das Tool.
+- **Verschlüsselte Ablage:** Lexware-Key, IMAP-Passwörter, Microsoft-Tokens sowie Gmail-Token und `credentials.json` liegen verschlüsselt im Datenordner.
 - **Duplikatschutz** über SHA-256 der Datei, **Zeitplan** im Container (Standard: stündlich).
 
 ## Voraussetzungen
@@ -31,12 +33,30 @@ Die Rechte von `/data` korrigiert der Container beim Start selbst (Standard `PUI
 
 Alle veränderlichen Daten (Einstellungen, Token, Datenbank, Beleg-Dateien) liegen im Volume `/data`. Das Image lässt sich ohne Datenverlust aktualisieren.
 
+## Weitere Postfächer
+
+Unter *Verbindungen → Postfach hinzufügen*.
+
+- **IMAP:** Anbieter wählen, E-Mail-Adresse und Passwort eintragen. Bei den meisten Anbietern ist ein eigenes App-Passwort nötig, GMX und WEB.DE verlangen zusätzlich die Freigabe von IMAP im Postfach. Hinweise stehen bei jedem Anbieter in der Oberfläche. Beim Speichern wird die Anmeldung getestet. Nur verschlüsselte Verbindungen (SSL/TLS oder STARTTLS).
+- **Microsoft 365 und Outlook:** Microsoft hat IMAP mit Passwort abgeschaltet. Du registrierst einmalig eine App im Microsoft Entra Admin Center (Anleitung mit Links in der Oberfläche: Umleitungs-URI `http://localhost`, öffentliche Clientflows erlauben, Berechtigung `IMAP.AccessAsUser.All`) und meldest dich wie bei Google über die kopierte `localhost`-Adresse an. In Firmen-Tenants muss IMAP für das Postfach aktiv sein und ein Administrator die Berechtigung eventuell genehmigen.
+- **Suche:** Zeitraum, Dateiendungen und Mindestgröße kommen aus den Einstellungen. Die Gmail-Suchanfrage gilt nur für Gmail, andere Postfächer filtern über Stichwörter in Betreff und Dateiname (pro Postfach einstellbar, leer = alle Anhänge der gewählten Endungen).
+- **Markierung:** Das Label „Lexware-übertragen“ gibt es nur bei Gmail. Bei den anderen Postfächern bleibt die Mail unangetastet, erledigte Mails merkt sich das Tool in seiner Datenbank.
+
+## Verschlüsselung der Zugangsdaten
+
+Lexware-API-Key, IMAP-Passwörter, Microsoft-Tokens, Gmail-Token und `credentials.json` werden mit Fernet (AES) verschlüsselt gespeichert. Ältere Klartext-Dateien verschlüsselt das Tool beim Start selbst.
+
+- **Schlüssel:** Standardmäßig erzeugt das Tool beim ersten Start `/data/encryption.key`. Das schützt vor einzeln weitergegebenen Dateien (Backup, Screenshot, Support), nicht davor, dass jemand den ganzen Datenordner kopiert.
+- **Besser:** Setze die Umgebungsvariable `W2L_ENCRYPTION_KEY` auf eine lange Zufallszeichenfolge (zum Beispiel `openssl rand -base64 32`), bevor du Zugangsdaten einträgst. Dann liegt der Schlüssel nicht neben den Daten. Den Wert gehört nicht ins Repository.
+- **Später nachrüsten:** Setzt du die Variable erst nach dem ersten Start, bleiben ältere Daten über `encryption.key` lesbar, neue Daten nutzen die Variable. Lösche `encryption.key` erst, wenn alle Zugangsdaten einmal neu gespeichert wurden.
+- **Wichtig:** Geht der Schlüssel verloren oder wird die Variable geändert, lassen sich damit verschlüsselte Zugangsdaten nicht mehr lesen. Dann müssen Gmail, Postfächer und Lexware-Key neu eingetragen werden.
+
 ## Sicherheit
 
 - **Keine Zugangsdaten im Repository.** Das Repository ist öffentlich. API-Keys, `credentials.json`, `token.json` und Passwörter gehören nur in das Volume `/data` bzw. in Umgebungsvariablen. Die `.gitignore` schließt typische Dateien aus, und die CI prüft jeden Push mit gitleaks.
 - Die GUI ist nur für das Heimnetz gedacht. Nicht per Portfreigabe ins Internet stellen. Für Zugriff von außen ein VPN verwenden.
 - Mit `GUI_PASSWORD` ist ein Login aktiv (ohne Passwort ist die GUI offen). Alle Aktionen sind gegen CSRF geschützt.
-- Der Lexware-API-Key liegt in `/data/settings.json` (Dateirechte 600) oder in der Umgebungsvariable `LEXWARE_API_KEY`, die Vorrang hat.
+- Der Lexware-API-Key liegt verschlüsselt in `/data/settings.json` (Dateirechte 600) oder in der Umgebungsvariable `LEXWARE_API_KEY`, die Vorrang hat.
 
 ## Lokale Entwicklung
 

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Microsoft-Postfach{% endblock %}
+{% block content %}
+<div class="page-head rise">
+  <div class="grow">
+    <a class="back" href="{{ url_for('connections') }}">{{ icon('caret-right', 'bold', 'flip') }}Verbindungen</a>
+    <h1>Microsoft 365 und Outlook</h1>
+    <p class="lead">Die Anmeldung läuft über Microsoft. Es wird kein Passwort gespeichert, nur ein verschlüsselter Zugriffstoken. Das Tool liest Mails nur.</p>
+  </div>
+</div>
+
+<section class="panel rise" style="--i: 1">
+  <ol class="steps">
+    <li class="step {{ 'is-done' if ms else 'is-current' }}">
+      <span class="step-mark">{% if ms %}{{ icon('check', 'bold') }}{% else %}1{% endif %}</span>
+      <div>
+        <h3>App bei Microsoft registrieren</h3>
+        <p>Microsoft verlangt für jeden Zugriff eine eigene App-Registrierung. Sie ist kostenlos und dauert wenige Minuten.</p>
+        <details class="howto" {% if not ms %}open{% endif %}>
+          <summary>{{ icon('caret-right', 'bold') }}So registrierst du die App</summary>
+          <ol>
+            <li>Öffne <a href="https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade/isMSAApp~/false" target="_blank" rel="noopener">App-Registrierungen im Microsoft Entra Admin Center</a> und wähle „Neue Registrierung“. Name zum Beispiel „Workspace Lexware“.</li>
+            <li>Unterstützte Kontotypen: für ein Firmenkonto „Nur Konten in diesem Organisationsverzeichnis“, für ein privates Outlook.com-Konto „Konten in einem beliebigen Organisationsverzeichnis und persönliche Microsoft-Konten“.</li>
+            <li>Umleitungs-URI: Plattform „Mobil- und Desktopanwendungen“, Wert <code>http://localhost</code>.</li>
+            <li>Unter „Authentifizierung“ die Option „Öffentliche Clientflows zulassen“ auf „Ja“ stellen.</li>
+            <li>Unter „API-Berechtigungen“ über „Berechtigung hinzufügen“ bei „APIs, die meine Organisation verwendet“ den Eintrag „Office 365 Exchange Online“ wählen, „Delegierte Berechtigungen“ und <code>IMAP.AccessAsUser.All</code> hinzufügen. Bei Firmenkonten muss ein Administrator das eventuell genehmigen.</li>
+            <li>Kopiere auf der Übersichtsseite die „Anwendungs-ID (Client)“. Bei einem Firmenkonto zusätzlich die „Verzeichnis-ID (Mandant)“.</li>
+            <li>Im Postfach muss IMAP aktiviert sein. Bei Microsoft 365 schaltet das der Exchange-Administrator unter „E-Mail-Apps“ frei.</li>
+          </ol>
+        </details>
+        <form method="post" action="{{ url_for('account_microsoft_start') }}" class="fields" style="margin-top: 16px">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <div class="fields-row">
+            <div class="field">
+              <label for="email">E-Mail-Adresse des Postfachs</label>
+              <input id="email" name="email" value="{{ ms.email if ms else '' }}" inputmode="email" autocomplete="off" required>
+            </div>
+            <div class="field">
+              <label for="client_id">Anwendungs-ID (Client-ID)</label>
+              <input id="client_id" name="client_id" value="{{ ms.client_id if ms else '' }}" autocomplete="off" required>
+            </div>
+          </div>
+          <div class="fields-row">
+            <div class="field">
+              <label for="tenant">Mandant</label>
+              <input id="tenant" name="tenant" value="{{ ms.tenant if ms else 'common' }}" autocomplete="off">
+              <span class="help">Firmenkonto: die Verzeichnis-ID. Privates Konto: <code>common</code>.</span>
+            </div>
+            <div class="field">
+              <label for="name">Anzeigename</label>
+              <input id="name" name="name" value="{{ ms.name if ms else '' }}" placeholder="z. B. Firma Outlook" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="folder">Ordner</label>
+              <input id="folder" name="folder" value="{{ ms.folder if ms else '' }}" placeholder="INBOX" autocomplete="off">
+            </div>
+          </div>
+          <div class="field">
+            <label for="keywords">Stichwörter</label>
+            <input id="keywords" name="keywords" value="{{ ms.keywords if ms else 'rechnung, invoice, beleg' }}" autocomplete="off">
+            <span class="help">Nur Anhänge, bei denen eines davon im Betreff oder Dateinamen steht. Leer lassen für alle Anhänge der gewählten Endungen.</span>
+          </div>
+          <div><button class="btn {{ '' if ms else 'btn-primary' }}" data-loading>{{ 'Neuen Login-Link erzeugen' if ms else 'Login-Link erzeugen' }}</button></div>
+        </form>
+      </div>
+    </li>
+
+    <li class="step {{ 'is-current' if ms else 'is-locked' }}">
+      <span class="step-mark">2</span>
+      <div>
+        <h3>Bei Microsoft anmelden</h3>
+        <p>Der Login öffnet sich in einem neuen Tab. Nach der Zustimmung leitet Microsoft auf eine Seite unter <code>localhost</code> weiter, die nicht lädt. Das ist erwartet.</p>
+        {% if ms %}
+        <div class="auth-link">
+          <a class="btn btn-primary" href="{{ ms.url }}" target="_blank" rel="noopener">{{ icon('arrow-square-out', 'bold') }}Bei Microsoft anmelden</a>
+        </div>
+        {% endif %}
+      </div>
+    </li>
+
+    <li class="step {{ 'is-current' if ms else 'is-locked' }}">
+      <span class="step-mark">3</span>
+      <div>
+        <h3>Adresse einfügen</h3>
+        <p>Kopiere die komplette Adresse aus der Adresszeile der nicht ladenden Seite hierher.</p>
+        <form method="post" action="{{ url_for('account_microsoft_finish') }}" class="inline-form">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input name="pasted" placeholder="http://localhost/?code=…&state=…" autocomplete="off" aria-label="Adresse aus dem Browser" required {% if not ms %}disabled{% endif %}>
+          <button class="btn btn-primary" {% if not ms %}disabled{% endif %} data-loading>Verbinden</button>
+        </form>
+      </div>
+    </li>
+  </ol>
+</section>
+{% endblock %}

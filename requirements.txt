@@ -4,3 +4,4 @@ pypdf>=5.0
 requests>=2.32
 google-api-python-client>=2.140
 google-auth-oauthlib>=1.2
+cryptography>=43

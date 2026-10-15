@@ -59,19 +59,38 @@ def ensure_dirs() -> None:
 
 
 def load_settings() -> dict:
+    """Einstellungen laden; der Lexware-Key wird dabei entschlüsselt (Altbestände im Klartext bleiben lesbar)."""
+    from . import secrets_store  # spät importiert: secrets_store braucht config
     settings = dict(DEFAULTS)
     if SETTINGS_FILE.exists():
         settings.update(json.loads(SETTINGS_FILE.read_text(encoding="utf-8")))
+    settings["lexware_api_key"] = secrets_store.decrypt(settings.get("lexware_api_key", ""))
     return settings
 
 
 def save_settings(settings: dict) -> None:
+    from . import secrets_store
     ensure_dirs()
-    SETTINGS_FILE.write_text(json.dumps(settings, indent=2, ensure_ascii=False), encoding="utf-8")
+    stored = dict(settings)
+    if stored.get("lexware_api_key"):
+        stored["lexware_api_key"] = secrets_store.encrypt(stored["lexware_api_key"])
+    SETTINGS_FILE.write_text(json.dumps(stored, indent=2, ensure_ascii=False), encoding="utf-8")
     try:
-        SETTINGS_FILE.chmod(0o600)  # enthält den API-Key
+        SETTINGS_FILE.chmod(0o600)
     except OSError:
         pass
+
+
+def migrate_secrets() -> None:
+    """Verschlüsselt beim Start alles, was aus älteren Versionen noch im Klartext liegt."""
+    from . import secrets_store
+    if SETTINGS_FILE.exists():
+        raw = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+        key = raw.get("lexware_api_key", "")
+        if key and not secrets_store.is_encrypted(key):
+            save_settings(load_settings())
+    secrets_store.encrypt_file_in_place(TOKEN_FILE)
+    secrets_store.encrypt_file_in_place(CREDENTIALS_FILE)
 
 
 def api_key(settings: dict) -> str:

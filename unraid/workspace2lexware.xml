@@ -14,5 +14,6 @@
   <Config Name="Daten" Target="/data" Default="/mnt/user/appdata/workspace2lexware" Mode="rw" Description="Einstellungen, Token, Datenbank und Beleg-Dateien" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/workspace2lexware</Config>
   <Config Name="GUI-Passwort" Target="GUI_PASSWORD" Default="" Mode="" Description="Passwort für die Web-GUI (dringend empfohlen)" Type="Variable" Display="always" Required="false" Mask="true"></Config>
   <Config Name="Lexware API-Key" Target="LEXWARE_API_KEY" Default="" Mode="" Description="Optional. Alternativ in der GUI unter Einstellungen eintragen." Type="Variable" Display="advanced" Required="false" Mask="true"></Config>
+  <Config Name="Verschlüsselungsschlüssel" Target="W2L_ENCRYPTION_KEY" Default="" Mode="" Description="Empfohlen: lange Zufallszeichenfolge zum Verschlüsseln der Zugangsdaten. Danach nicht mehr ändern, sonst sind gespeicherte Zugangsdaten unlesbar." Type="Variable" Display="always" Required="false" Mask="true"></Config>
   <Config Name="Zeitzone" Target="TZ" Default="Europe/Berlin" Mode="" Description="Zeitzone für Anzeige und Zeitplan" Type="Variable" Display="advanced" Required="false" Mask="false">Europe/Berlin</Config>
 </Container>

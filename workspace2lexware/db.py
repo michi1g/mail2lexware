@@ -36,6 +36,23 @@ CREATE TABLE IF NOT EXISTS rules (
     action TEXT NOT NULL           -- always | never
 );
 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS accounts (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,            -- imap | microsoft
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    host TEXT,
+    port INTEGER,
+    security TEXT,                 -- ssl | starttls
+    username TEXT,
+    folder TEXT NOT NULL DEFAULT 'INBOX',
+    keywords TEXT NOT NULL DEFAULT '',
+    secret TEXT NOT NULL,          -- verschlüsseltes JSON (Passwort bzw. OAuth-Tokens)
+    enabled INTEGER NOT NULL DEFAULT 1,
+    last_status TEXT,
+    last_checked TEXT,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -59,6 +76,11 @@ def init() -> None:
     with conn() as c:
         c.execute("PRAGMA journal_mode=WAL")
         c.executescript(SCHEMA)
+        cols = {r["name"] for r in c.execute("PRAGMA table_info(documents)")}
+        if "account_id" not in cols:  # Migration älterer Datenbanken: bisherige Belege stammen aus Gmail
+            c.execute("ALTER TABLE documents ADD COLUMN account_id TEXT NOT NULL DEFAULT 'google'")
+        if "source" not in cols:
+            c.execute("ALTER TABLE documents ADD COLUMN source TEXT NOT NULL DEFAULT 'Gmail'")
 
 
 # --- Dokumente -------------------------------------------------------------
@@ -141,7 +163,8 @@ def messages_to_label() -> list[str]:
         rows = c.execute(
             """SELECT message_id FROM documents GROUP BY message_id
                HAVING SUM(status IN ('uploaded','duplicate') AND labeled=0) > 0
-                  AND SUM(status IN ('pending','failed')) = 0"""
+                  AND SUM(status IN ('pending','failed')) = 0
+                  AND MAX(account_id = 'google') = 1"""
         ).fetchall()
     return [r["message_id"] for r in rows]
 
@@ -149,6 +172,45 @@ def messages_to_label() -> list[str]:
 def mark_labeled(message_id: str) -> None:
     with conn() as c:
         c.execute("UPDATE documents SET labeled=1 WHERE message_id=?", (message_id,))
+
+
+# --- Postfächer (IMAP, Microsoft) ---------------------------------------------
+
+def add_account(account_id: str, kind: str, name: str, email: str, secret: str, host: str | None = None,
+                port: int | None = None, security: str | None = None, username: str | None = None,
+                folder: str = "INBOX", keywords: str = "") -> None:
+    with conn() as c:
+        c.execute(
+            "INSERT INTO accounts (id, kind, name, email, host, port, security, username, folder, keywords, secret, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            (account_id, kind, name, email, host, port, security, username, folder, keywords, secret, now()),
+        )
+
+
+def list_accounts(enabled_only: bool = False):
+    with conn() as c:
+        sql = "SELECT * FROM accounts" + (" WHERE enabled=1" if enabled_only else "") + " ORDER BY created_at, id"
+        return c.execute(sql).fetchall()
+
+
+def get_account(account_id: str):
+    with conn() as c:
+        return c.execute("SELECT * FROM accounts WHERE id=?", (account_id,)).fetchone()
+
+
+def delete_account(account_id: str) -> None:
+    with conn() as c:
+        c.execute("DELETE FROM accounts WHERE id=?", (account_id,))
+
+
+def update_account_secret(account_id: str, secret: str) -> None:
+    with conn() as c:
+        c.execute("UPDATE accounts SET secret=? WHERE id=?", (secret, account_id))
+
+
+def set_account_status(account_id: str, status: str) -> None:
+    with conn() as c:
+        c.execute("UPDATE accounts SET last_status=?, last_checked=? WHERE id=?", (status, now(), account_id))
 
 
 # --- Regeln ----------------------------------------------------------------

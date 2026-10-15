@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Postfach hinzufügen{% endblock %}
+{% block content %}
+<div class="page-head rise">
+  <div class="grow">
+    <a class="back" href="{{ url_for('connections') }}">{{ icon('caret-right', 'bold', 'flip') }}Verbindungen</a>
+    <h1>Postfach hinzufügen</h1>
+    <p class="lead">Das Tool liest Mails nur. Es verschiebt, markiert oder löscht nichts im Postfach.</p>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('account_add') }}" class="panel rise" style="--i: 1" autocomplete="off">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+
+  <section class="form-section">
+    <div>
+      <h2>Anbieter</h2>
+      <p class="desc">Wähle deinen Mailanbieter. Server und Port sind dann schon eingetragen.</p>
+    </div>
+    <div class="fields">
+      <div class="choices provider-grid" role="radiogroup" aria-label="Anbieter">
+        {% for p in providers %}
+          <label class="choice">
+            <input type="radio" name="provider" value="{{ p.key }}" data-provider data-hint="{{ p.hint }}" data-custom="{{ 'true' if p.key == 'custom' else 'false' }}" {% if p.key == selected %}checked{% endif %}>
+            <span class="choice-body"><strong>{{ p.label }}</strong></span>
+          </label>
+        {% endfor %}
+        <a class="choice" href="{{ url_for('account_microsoft') }}">
+          <span class="choice-body"><strong>Microsoft 365 und Outlook</strong><span>Anmeldung über Microsoft, kein Passwort</span></span>
+        </a>
+      </div>
+      <p class="callout" data-provider-hint {% if not (providers|selectattr('key', 'equalto', selected)|first).hint %}hidden{% endif %}>{{ (providers|selectattr('key', 'equalto', selected)|first).hint }}</p>
+      <p class="help">Gmail und Google Workspace verbindest du oben auf der Seite „Verbindungen“.</p>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <div>
+      <h2>Zugangsdaten</h2>
+      <p class="desc">Das Passwort wird verschlüsselt im Datenordner gespeichert und nie wieder angezeigt.</p>
+    </div>
+    <div class="fields">
+      <div class="fields-row">
+        <div class="field">
+          <label for="email">E-Mail-Adresse</label>
+          <input id="email" type="text" name="email" value="{{ v.get('email', '') }}" inputmode="email" autocomplete="off" required>
+        </div>
+        <div class="field">
+          <label for="password">Passwort</label>
+          <input id="password" type="password" name="password" autocomplete="new-password" required>
+          <span class="help">Bei vielen Anbietern ein eigenes App-Passwort.</span>
+        </div>
+      </div>
+      <div class="fields-row" data-custom-only hidden>
+        <div class="field">
+          <label for="host">Server</label>
+          <input id="host" name="host" value="{{ v.get('host', '') }}" placeholder="imap.beispiel.de" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="port">Port</label>
+          <input id="port" type="number" min="1" max="65535" name="port" value="{{ v.get('port', 993) }}">
+        </div>
+        <div class="field">
+          <label for="security">Verschlüsselung</label>
+          <div class="select-wrap">
+            <select id="security" name="security">
+              <option value="ssl" {% if v.get('security') != 'starttls' %}selected{% endif %}>SSL/TLS (Port 993)</option>
+              <option value="starttls" {% if v.get('security') == 'starttls' %}selected{% endif %}>STARTTLS (Port 143)</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="username">Benutzername</label>
+          <input id="username" name="username" value="{{ v.get('username', '') }}" autocomplete="off">
+          <span class="help">Leer lassen, wenn er der E-Mail-Adresse entspricht.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <div>
+      <h2>Suche</h2>
+      <p class="desc">Zeitraum, Dateiendungen und Mindestgröße gelten wie in den Einstellungen.</p>
+    </div>
+    <div class="fields">
+      <div class="fields-row">
+        <div class="field">
+          <label for="name">Anzeigename</label>
+          <input id="name" name="name" value="{{ v.get('name', '') }}" placeholder="z. B. GMX privat" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="folder">Ordner</label>
+          <input id="folder" name="folder" value="{{ v.get('folder', '') }}" placeholder="INBOX" autocomplete="off">
+        </div>
+      </div>
+      <div class="field">
+        <label for="keywords">Stichwörter</label>
+        <input id="keywords" name="keywords" value="{{ v.get('keywords', 'rechnung, invoice, beleg') }}" autocomplete="off">
+        <span class="help">Nur Anhänge, bei denen eines davon im Betreff oder Dateinamen steht. Leer lassen, um alle Anhänge der gewählten Endungen zu prüfen.</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="form-foot">
+    <span class="note">Beim Speichern wird die Anmeldung getestet.</span>
+    <a class="btn btn-quiet" href="{{ url_for('connections') }}">Abbrechen</a>
+    <button class="btn btn-primary" data-loading>Testen und speichern</button>
+  </div>
+</form>
+{% endblock %}

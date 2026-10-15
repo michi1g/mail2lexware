@@ -30,6 +30,28 @@
     sync();
   }
 
+  // Postfach hinzufügen: Hinweis und Serverfelder passend zum Anbieter
+  const providers = document.querySelectorAll("[data-provider]");
+  if (providers.length) {
+    const hint = document.querySelector("[data-provider-hint]");
+    const custom = document.querySelector("[data-custom-only]");
+    const sync = () => {
+      const sel = [...providers].find((r) => r.checked);
+      if (!sel) return;
+      hint.textContent = sel.dataset.hint;
+      hint.hidden = !sel.dataset.hint;
+      custom.hidden = sel.dataset.custom !== "true";
+    };
+    providers.forEach((r) => r.addEventListener("change", sync));
+    sync();
+  }
+
+  // Sicherheitsabfrage bei Formularen mit data-confirm
+  document.addEventListener("submit", (e) => {
+    const msg = e.target.dataset?.confirm;
+    if (msg && !window.confirm(msg)) e.preventDefault();
+  });
+
   // Läuft gerade ein Durchlauf? Dann Status abfragen und danach neu laden.
   if (document.body.dataset.running === "true") {
     const poll = async () => {

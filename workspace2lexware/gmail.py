@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -11,7 +12,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
-from . import config
+from . import config, secrets_store
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]  # lesen + Labels setzen
 # Der Login läuft über eine nicht erreichbare localhost-Seite; die URL kopiert der Nutzer in die GUI.
@@ -47,13 +48,13 @@ class NotConnected(RuntimeError):
 def _load_credentials() -> Credentials | None:
     if not config.TOKEN_FILE.exists():
         return None
-    creds = Credentials.from_authorized_user_file(config.TOKEN_FILE, SCOPES)
+    creds = Credentials.from_authorized_user_info(json.loads(secrets_store.read_file(config.TOKEN_FILE)), SCOPES)
     if not creds.has_scopes(SCOPES):
         return None
     if not creds.valid:
         if creds.expired and creds.refresh_token:
             creds.refresh(Request())
-            config.TOKEN_FILE.write_text(creds.to_json())
+            secrets_store.write_file(config.TOKEN_FILE, creds.to_json())
         else:
             return None
     return creds
@@ -75,7 +76,8 @@ def start_login() -> str:
     global _pending_flow
     if not config.CREDENTIALS_FILE.exists():
         raise NotConnected("credentials.json fehlt")
-    _pending_flow = Flow.from_client_secrets_file(str(config.CREDENTIALS_FILE), SCOPES, redirect_uri=REDIRECT_URI)
+    client_config = json.loads(secrets_store.read_file(config.CREDENTIALS_FILE))
+    _pending_flow = Flow.from_client_config(client_config, SCOPES, redirect_uri=REDIRECT_URI)
     url, _ = _pending_flow.authorization_url(access_type="offline", prompt="consent")
     return url
 
@@ -91,7 +93,7 @@ def finish_login(pasted: str) -> None:
         _pending_flow.fetch_token(authorization_response=pasted)
     else:
         _pending_flow.fetch_token(code=pasted)
-    config.TOKEN_FILE.write_text(_pending_flow.credentials.to_json())
+    secrets_store.write_file(config.TOKEN_FILE, _pending_flow.credentials.to_json())
 
 
 def disconnect() -> None:

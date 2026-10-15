@@ -10,5 +10,6 @@ services:
       TZ: Europe/Berlin
       GUI_PASSWORD: ""   # hier ein eigenes Passwort setzen, nicht ins Repo committen
       # LEXWARE_API_KEY: ""   # optional; alternativ in der GUI unter Einstellungen
+      # W2L_ENCRYPTION_KEY: ""   # empfohlen: lange Zufallszeichenfolge, hier eigenen Wert setzen (nicht ins Repo committen)
     volumes:
       - /mnt/user/appdata/workspace2lexware:/data

@@ -10,7 +10,7 @@ from pathlib import Path
 from flask import (Flask, abort, flash, jsonify, redirect, render_template, request, send_file, session, url_for)
 from markupsafe import Markup
 
-from . import config, db, gmail, scheduler, service
+from . import config, db, gmail, imap_source, microsoft, providers, scheduler, secrets_store, service
 from .lexware import LexwareClient, LexwareError
 
 OPEN_ENDPOINTS = {"health", "login", "static"}
@@ -59,6 +59,7 @@ def _int(value, default: int, minimum: int = 0) -> int:
 
 def create_app(start_scheduler: bool = True) -> Flask:
     config.ensure_dirs()
+    config.migrate_secrets()
     db.init()
     app = Flask(__name__)
     app.secret_key = config.secret_key()
@@ -91,7 +92,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
             session["csrf"] = secrets.token_urlsafe(24)
         return {"csrf": session["csrf"], "auth_enabled": bool(password), "running": service.is_running(),
                 "status_labels": STATUS_LABELS, "icon": icon,
-                "gmail_ready": config.TOKEN_FILE.exists(),
+                "gmail_ready": config.TOKEN_FILE.exists(), "has_accounts": bool(db.list_accounts()),
                 "lexware_ready": bool(config.api_key(config.load_settings())),
                 "pending_count": db.counts().get("pending", 0) + db.counts().get("failed", 0)}
 
@@ -289,6 +290,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
             gmail_error=gmail_error,
             has_key=bool(config.api_key(config.load_settings())),
             auth_url=session.pop("auth_url", None),
+            accounts=db.list_accounts(),
         )
 
     @app.post("/connections/credentials")
@@ -301,7 +303,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
             if b'"installed"' not in content:
                 flash("Das ist kein OAuth-Client vom Typ „Desktop-App“.", "error")
             else:
-                config.CREDENTIALS_FILE.write_bytes(content)
+                secrets_store.write_file(config.CREDENTIALS_FILE, content.decode("utf-8"))
                 flash("credentials.json gespeichert.", "ok")
         return redirect(url_for("connections"))
 
@@ -340,6 +342,133 @@ def create_app(start_scheduler: bool = True) -> Flask:
                 flash(f"Lexware-Verbindung OK{': ' + name if name else ''}.", "ok")
             except (LexwareError, Exception) as e:
                 flash(f"Lexware-Verbindung fehlgeschlagen: {e}", "error")
+        return redirect(url_for("connections"))
+
+    # --- Weitere Postfächer: IMAP -------------------------------------------
+    login_errors = (imap_source.ImapError, microsoft.MicrosoftAuthError, secrets_store.SecretError)
+
+    @app.get("/accounts/new")
+    def account_new():
+        selected = request.args.get("provider", "gmx")
+        if providers.get_provider(selected) is None:
+            selected = "gmx"
+        return render_template("account_new.html", providers=providers.PROVIDERS, selected=selected, v={})
+
+    @app.post("/accounts/add")
+    def account_add():
+        f = request.form
+        prov = providers.get_provider(f.get("provider", "")) or providers.get_provider("custom")
+        email = f.get("email", "").strip()
+        password = f.get("password", "")
+        custom = prov["key"] == "custom"
+        host = f.get("host", "").strip() if custom else prov["host"]
+        port = _int(f.get("port"), 993, 1) if custom else prov["port"]
+        security = ("starttls" if f.get("security") == "starttls" else "ssl") if custom else prov["security"]
+        username = f.get("username", "").strip() or email
+        values = {"email": email, "name": f.get("name", "").strip(), "host": host, "port": port, "security": security,
+                  "username": f.get("username", "").strip(), "folder": f.get("folder", "").strip(),
+                  "keywords": f.get("keywords", "").strip()}
+
+        def back(message):
+            flash(message, "error")
+            return render_template("account_new.html", providers=providers.PROVIDERS, selected=prov["key"], v=values)
+
+        if not email or not password or not host or not username:
+            return back("E-Mail-Adresse, Passwort" + (" und Server" if custom else "") + " sind Pflichtfelder.")
+        cfg = imap_source.ImapConfig(host=host, port=port, security=security, username=username,
+                                     folder=values["folder"] or "INBOX")
+        try:
+            count = imap_source.test_connection(cfg, password=password)
+        except login_errors as e:
+            return back(str(e))
+        db.add_account(
+            secrets.token_hex(4), "imap", values["name"] or (email if custom else prov["label"]), email,
+            secrets_store.encrypt_json({"password": password}), host=host, port=port, security=security,
+            username=username, folder=cfg.folder, keywords=values["keywords"],
+        )
+        flash(f"Postfach verbunden. Der Ordner {cfg.folder} enthält {count} Mails.", "ok")
+        return redirect(url_for("connections"))
+
+    # --- Weitere Postfächer: Microsoft (OAuth) -------------------------------
+    ms_pending: dict[str, dict] = {}  # laufende Logins; gehen bei einem Neustart verloren (dann Login neu starten)
+
+    @app.get("/accounts/microsoft")
+    def account_microsoft():
+        return render_template("account_microsoft.html", ms=session.get("ms"))
+
+    @app.post("/accounts/microsoft/start")
+    def account_microsoft_start():
+        f = request.form
+        email = f.get("email", "").strip()
+        values = {"email": email, "client_id": f.get("client_id", "").strip(),
+                  "tenant": f.get("tenant", "").strip() or "common", "name": f.get("name", "").strip(),
+                  "folder": f.get("folder", "").strip(), "keywords": f.get("keywords", "").strip()}
+        if "@" not in email:
+            flash("Bitte die E-Mail-Adresse des Postfachs angeben.", "error")
+            return redirect(url_for("account_microsoft"))
+        try:
+            url, pending = microsoft.new_login(values["client_id"], values["tenant"], email)
+        except microsoft.MicrosoftAuthError as e:
+            flash(str(e), "error")
+            return redirect(url_for("account_microsoft"))
+        key = secrets.token_hex(8)
+        while len(ms_pending) >= 20:
+            ms_pending.pop(next(iter(ms_pending)))
+        ms_pending[key] = pending
+        session["ms"] = {**values, "key": key, "url": url}
+        return redirect(url_for("account_microsoft"))
+
+    @app.post("/accounts/microsoft/finish")
+    def account_microsoft_finish():
+        ms = session.get("ms")
+        pending = ms and ms_pending.get(ms["key"])
+        if not pending:
+            flash("Der Login wurde nicht gestartet oder der Container wurde neu gestartet. Starte ihn erneut.", "error")
+            return redirect(url_for("account_microsoft"))
+        try:
+            tokens = microsoft.finish_login(pending, request.form.get("pasted", ""))
+            cfg = imap_source.ImapConfig(host=microsoft.IMAP_HOST, port=microsoft.IMAP_PORT, security="ssl",
+                                         username=ms["email"], folder=ms["folder"] or "INBOX")
+            count = imap_source.test_connection(cfg, access_token=tokens["access_token"])
+        except login_errors as e:
+            flash(str(e), "error")
+            return redirect(url_for("account_microsoft"))
+        db.add_account(
+            secrets.token_hex(4), "microsoft", ms["name"] or ms["email"], ms["email"], secrets_store.encrypt_json(tokens),
+            host=microsoft.IMAP_HOST, port=microsoft.IMAP_PORT, security="ssl", username=ms["email"],
+            folder=cfg.folder, keywords=ms["keywords"],
+        )
+        ms_pending.pop(ms["key"], None)
+        session.pop("ms", None)
+        flash(f"Microsoft-Postfach verbunden. Der Ordner {cfg.folder} enthält {count} Mails.", "ok")
+        return redirect(url_for("connections"))
+
+    @app.post("/accounts/microsoft/cancel")
+    def account_microsoft_cancel():
+        ms = session.pop("ms", None)
+        if ms:
+            ms_pending.pop(ms["key"], None)
+        return redirect(url_for("account_microsoft"))
+
+    # --- Postfach-Aktionen --------------------------------------------------
+    @app.post("/accounts/<account_id>/test")
+    def account_test(account_id):
+        account = db.get_account(account_id) or abort(404)
+        try:
+            cfg, auth = service.imap_params(account)
+            count = imap_source.test_connection(cfg, **auth)
+            db.set_account_status(account_id, "ok")
+            flash(f"{account['name']}: Verbindung OK, {count} Mails im Ordner {cfg.folder}.", "ok")
+        except login_errors as e:
+            db.set_account_status(account_id, str(e))
+            flash(f"{account['name']}: {e}", "error")
+        return redirect(url_for("connections"))
+
+    @app.post("/accounts/<account_id>/delete")
+    def account_delete(account_id):
+        account = db.get_account(account_id) or abort(404)
+        db.delete_account(account_id)
+        flash(f"{account['name']} wurde entfernt. Bereits erfasste Belege bleiben im Verlauf.", "ok")
         return redirect(url_for("connections"))
 
     if start_scheduler:

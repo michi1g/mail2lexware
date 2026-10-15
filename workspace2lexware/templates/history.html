@@ -27,6 +27,7 @@
           <td>
             <div class="cell-title">{{ d.sender or d.sender_email }}</div>
             <div class="cell-sub">{{ d.subject or 'Ohne Betreff' }}</div>
+            {% if has_accounts %}<div class="muted" style="font-size: 13px">{{ d.source }}</div>{% endif %}
           </td>
           <td>
             <a class="cell-file" href="{{ url_for('file', doc_id=d.id) }}" target="_blank" rel="noopener">

@@ -124,6 +124,7 @@ def test_cycle_scan_upload_and_label(monkeypatch):
     monkeypatch.setattr(gmail, "ensure_label", lambda s, n: "L1")
     monkeypatch.setattr(gmail, "add_label", lambda s, m, l: labeled.append(m))
     monkeypatch.setattr(service.LexwareClient, "upload_voucher_file", lambda self, *a: "lex-1")
+    config.TOKEN_FILE.write_text("{}")  # Gmail gilt als verbunden
     db.add_rule("lieferant.de", "always")
     s = config.load_settings()
     s.update(lexware_api_key="k", label="Lexware-übertragen")

@@ -90,6 +90,42 @@
 
 <section class="panel rise" style="--i: 2">
   <div class="conn-head">
+    <span class="conn-icon">{{ icon('tray') }}</span>
+    <div class="grow">
+      <h2>Weitere Postfächer</h2>
+      <p>IMAP-Anbieter wie GMX, WEB.DE oder T-Online sowie Microsoft 365 und Outlook. Mails werden nur gelesen.</p>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('account_new') }}">{{ icon('plus', 'bold') }}Postfach hinzufügen</a>
+  </div>
+  {% if accounts %}
+  <ul class="list-plain acct-list">
+    {% for a in accounts %}
+    <li class="rule-row acct-row">
+      <div class="acct-main">
+        <div class="cell-title">{{ a.name }}</div>
+        <div class="muted">{{ a.email }}{% if a.folder != 'INBOX' %} · {{ a.folder }}{% endif %}</div>
+        {% if a.last_status and a.last_status != 'ok' %}<div class="doc-error">{{ a.last_status }}</div>{% endif %}
+      </div>
+      <span class="chip">{{ 'Microsoft' if a.kind == 'microsoft' else 'IMAP' }}</span>
+      {% if a.last_status == 'ok' %}<span class="chip ok">{{ icon('check-circle', 'fill') }}Geprüft {{ a.last_checked|ago }}</span>
+      {% elif a.last_status %}<span class="chip err">{{ icon('warning-circle', 'fill') }}Fehler</span>
+      {% else %}<span class="chip">Noch nicht geprüft</span>{% endif %}
+      <form method="post" action="{{ url_for('account_test', account_id=a.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn" data-loading>Testen</button>
+      </form>
+      <form method="post" action="{{ url_for('account_delete', account_id=a.id) }}" data-confirm="{{ a.name }} wirklich entfernen?">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn btn-danger-quiet btn-icon" title="Postfach entfernen" aria-label="{{ a.name }} entfernen">{{ icon('trash') }}</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+
+<section class="panel rise" style="--i: 3">
+  <div class="conn-head">
     <span class="conn-icon">{{ icon('key') }}</span>
     <div class="grow">
       <h2>Lexware Office</h2>
