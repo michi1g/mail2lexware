@@ -337,7 +337,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
         else:
             try:
                 name = LexwareClient(key, s["base_url"]).test_connection()
-                flash(f"Lexware-Verbindung OK{': ' + name if name else ''}.", "ok")
+                flash(f"Lexware-Verbindung OK{': ' + name if name else '. Der Key wird akzeptiert, das Profil ist aber nicht lesbar.'}", "ok")
             except (LexwareError, Exception) as e:
                 flash(f"Lexware-Verbindung fehlgeschlagen: {e}", "error")
         return redirect(url_for("connections"))

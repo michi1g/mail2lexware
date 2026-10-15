@@ -472,6 +472,18 @@ td.num, th.num { font-variant-numeric: tabular-nums; }
 .auth-link { margin-top: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .callout.err { background: var(--err-bg); color: var(--err-fg); }
 .callout code { background: transparent; color: inherit; padding: 0; font-size: 12px; word-break: break-word; }
+.howto { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); max-width: 720px; }
+.howto summary {
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px; cursor: pointer; font-weight: 500; font-size: 14px; list-style: none;
+  border-radius: var(--r-md);
+}
+.howto summary::-webkit-details-marker { display: none; }
+.howto summary .icon { transition: rotate 180ms var(--ease-out); color: var(--text-3); }
+.howto[open] summary .icon { rotate: 90deg; }
+.howto ol { margin: 0; padding: 4px 18px 6px 36px; display: grid; gap: 10px; color: var(--text-2); font-size: 14px; }
+.howto li { padding-left: 4px; }
+.howto li::marker { color: var(--text-3); font-variant-numeric: tabular-nums; }
+.howto .help { padding: 4px 14px 14px; }
 .callout { margin-top: 12px; padding: 11px 14px; border-radius: var(--r-md); background: var(--neutral-bg); color: var(--neutral-fg); font-size: 13.5px; }
 
 /* ---------- Regeln ---------- */
@@ -508,12 +520,18 @@ td.num, th.num { font-variant-numeric: tabular-nums; }
   .status-link .label { display: none; }
   .form-section { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 }
+@media (max-width: 480px) {
+  .brand { display: none; }
+}
 @media (max-width: 640px) {
   .topbar-inner { padding: 0 12px; gap: 8px; }
   .nav { overflow-x: auto; scrollbar-width: none; }
   .nav a { flex: none; padding: 0 9px; gap: 6px; }
   .nav .count { display: none; }
   .brand-name { display: none; }
+  .conn-head { flex-wrap: wrap; padding: 16px; }
+  .conn-head .grow { flex: 1 1 calc(100% - 60px); }
+  .conn-head > .chip, .conn-head > form, .conn-head > .btn { margin-left: 56px; }
   main { padding: 20px 16px 120px; }
   .doc { grid-template-columns: 18px minmax(0, 1fr); align-items: start; gap: 12px; }
   .doc > .check { margin-top: 3px; }

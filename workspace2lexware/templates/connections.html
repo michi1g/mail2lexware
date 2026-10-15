@@ -38,7 +38,17 @@
       <span class="step-mark">{% if has_credentials %}{{ icon('check', 'bold') }}{% else %}1{% endif %}</span>
       <div>
         <h3>OAuth-Client hochladen</h3>
-        <p>Erstelle in der Google Cloud Console einen OAuth-Client vom Typ „Desktop-App“ und lade die <code>credentials.json</code> hier hoch.</p>
+        <p>Du brauchst einen OAuth-Client vom Typ „Desktop-App“ aus der Google Cloud Console. Die heruntergeladene <code>credentials.json</code> lädst du hier hoch.</p>
+        <details class="howto" {% if not has_credentials %}open{% endif %}>
+          <summary>{{ icon('caret-right', 'bold') }}So erstellst du den OAuth-Client</summary>
+          <ol>
+            <li>Öffne die <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud Console</a> und lege ein Projekt an, zum Beispiel „Workspace Lexware“. Mit dem Workspace-Konto anmelden, dessen Postfach durchsucht werden soll.</li>
+            <li><strong>Gmail API aktivieren.</strong> Ohne diesen Schritt schlägt jeder Zugriff fehl. Öffne die <a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank" rel="noopener">Gmail API</a> im Projekt und klicke auf „Aktivieren“.</li>
+            <li>Richte den <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener">OAuth-Zustimmungsbildschirm</a> ein. Wähle bei Workspace den Nutzertyp „Intern“. Dann läuft der Zugriff dauerhaft und Google muss die App nicht prüfen.</li>
+            <li>Erstelle unter <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Anmeldedaten</a> über „Anmeldedaten erstellen“ eine „OAuth-Client-ID“ vom Typ „Desktop-App“ und lade die JSON-Datei herunter.</li>
+          </ol>
+          <p class="help">Das Tool fragt nur den Zugriff <code>gmail.modify</code> an: Lesen und Labels setzen, kein Senden und kein Löschen.</p>
+        </details>
         <form method="post" action="{{ url_for('upload_credentials') }}" enctype="multipart/form-data" class="inline-form">
           <input type="hidden" name="csrf" value="{{ csrf }}">
           <input type="file" name="file" accept=".json" required aria-label="credentials.json auswählen">
