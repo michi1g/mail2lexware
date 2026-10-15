@@ -16,7 +16,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from . import config
 
 PREFIX = "enc:v1:"
-ENV_KEY = "W2L_ENCRYPTION_KEY"
+ENV_NAME = "W2L_ENCRYPTION_KEY"
 KEY_FILE = config.DATA_DIR / "encryption.key"
 
 
@@ -25,7 +25,7 @@ class SecretError(RuntimeError):
 
 
 def _env_key() -> bytes | None:
-    env = os.environ.get(ENV_KEY, "").strip()
+    env = os.environ.get(ENV_NAME, "").strip()
     if not env:
         return None
     try:  # gültiger Fernet-Schlüssel (44 Zeichen Base64) direkt verwenden

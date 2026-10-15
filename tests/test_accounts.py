@@ -31,19 +31,19 @@ def test_encrypt_roundtrip_and_legacy_plaintext():
 
 def test_env_key_set_later_keeps_old_data_readable(monkeypatch):
     old = secrets_store.encrypt("dummy-alt")  # mit der Schlüsseldatei verschlüsselt
-    monkeypatch.setenv(secrets_store.ENV_KEY, "spaeter-gesetzter-schluessel")
+    monkeypatch.setenv(secrets_store.ENV_NAME, "spaeter-gesetzter-schluessel")
     assert secrets_store.decrypt(old) == "dummy-alt"
     neu = secrets_store.encrypt("dummy-neu")  # neue Daten nutzen die Umgebungsvariable
     assert secrets_store.decrypt(neu) == "dummy-neu"
-    monkeypatch.delenv(secrets_store.ENV_KEY)
+    monkeypatch.delenv(secrets_store.ENV_NAME)
     with pytest.raises(secrets_store.SecretError):
         secrets_store.decrypt(neu)  # ohne die Variable ist der neue Schlüssel nicht mehr da
 
 
 def test_wrong_key_gives_clear_error(monkeypatch):
-    monkeypatch.setenv(secrets_store.ENV_KEY, "schluessel-a")
+    monkeypatch.setenv(secrets_store.ENV_NAME, "schluessel-a")
     token = secrets_store.encrypt("dummy")
-    monkeypatch.setenv(secrets_store.ENV_KEY, "schluessel-b")
+    monkeypatch.setenv(secrets_store.ENV_NAME, "schluessel-b")
     with pytest.raises(secrets_store.SecretError, match="entschlüsseln"):
         secrets_store.decrypt(token)
 
