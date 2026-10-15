@@ -54,6 +54,21 @@ def test_label_only_when_all_docs_resolved():
     assert "m1" not in db.messages_to_label()
 
 
+def test_period_range():
+    from datetime import date
+    from workspace2lexware import config
+    today = date(2026, 10, 15)
+    base = dict(config.DEFAULTS)
+    assert config.period_range(base, today) == (date(2026, 9, 15), None)
+    assert config.period_range({**base, "period": "this_year"}, today) == (date(2026, 1, 1), None)
+    assert config.period_range({**base, "period": "last_year"}, today) == (date(2025, 1, 1), date(2025, 12, 31))
+    custom = {**base, "period": "custom", "date_from": "2026-03-01", "date_to": "2026-03-31"}
+    assert config.period_range(custom, today) == (date(2026, 3, 1), date(2026, 3, 31))
+    swapped = {**custom, "date_from": "2026-03-31", "date_to": "2026-03-01"}
+    assert config.period_range(swapped, today) == (date(2026, 3, 1), date(2026, 3, 31))
+    assert config.period_range({**base, "period": "custom"}, today) == (date(2026, 9, 15), None)
+
+
 def test_pages_render(client):
     for path in ["/review", "/history", "/rules", "/settings", "/connections", "/health"]:
         assert client.get(path).status_code == 200, path

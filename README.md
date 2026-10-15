@@ -7,6 +7,7 @@
 - **Prüfen:** Gefundene Anhänge mit PDF-Vorschau, Auswahl per Häkchen oder Tastatur (Pfeiltasten, `x`), dann hochladen oder ignorieren.
 - **Oberfläche:** Hell und dunkel nach Systemeinstellung, auch mobil bedienbar. Schriften und Icons (Geist, Phosphor) liegen im Image, es werden keine externen Ressourcen geladen.
 - **Erkennung:** Der PDF-Text wird auf Rechnungsmerkmale geprüft (Rechnungsnummer, IBAN, MwSt …) und mit einem Score bewertet. XRechnung/ZUGFeRD-XML zählt immer als Rechnung.
+- **Zeitraum:** letzte N Tage, dieses Jahr, letztes Jahr oder ein eigener Zeitraum von-bis (Einstellungen).
 - **Modus:** „Alles prüfen“ oder „eindeutige Rechnungen automatisch hochladen, Rest prüfen“.
 - **Absender-Regeln:** pro Adresse oder Domain „immer hochladen“ oder „nie“.
 - **Verlauf** mit Status, Fehlermeldungen und „Erneut versuchen“.

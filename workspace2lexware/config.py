@@ -1,6 +1,7 @@
 import json
 import os
 import secrets
+from datetime import date, timedelta
 from pathlib import Path
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "data")).resolve()
@@ -13,7 +14,10 @@ DB_FILE = DATA_DIR / "state.db"
 
 DEFAULTS = {
     "query": "has:attachment (rechnung OR invoice OR rechnungsnummer OR beleg) -in:sent -in:spam -in:trash",
+    "period": "days",  # days | this_year | last_year | custom
     "lookback_days": 30,
+    "date_from": "",
+    "date_to": "",
     "extensions": [".pdf", ".xml"],
     "min_size_bytes": 3000,
     "label": "Lexware-übertragen",
@@ -23,6 +27,30 @@ DEFAULTS = {
     "lexware_api_key": "",
     "base_url": "https://api.lexware.io/v1",
 }
+
+
+PERIODS = ("days", "this_year", "last_year", "custom")
+
+
+def period_range(settings: dict, today: date | None = None) -> tuple[date, date | None]:
+    """Suchzeitraum als (von, bis) einschließlich beider Tage; bis=None bedeutet offen bis heute."""
+    today = today or date.today()
+    period = settings.get("period", "days")
+    if period == "this_year":
+        return date(today.year, 1, 1), None
+    if period == "last_year":
+        return date(today.year - 1, 1, 1), date(today.year - 1, 12, 31)
+    if period == "custom":
+        try:
+            start = date.fromisoformat(settings.get("date_from", ""))
+        except ValueError:
+            start = today - timedelta(days=int(settings["lookback_days"]))
+        try:
+            end = date.fromisoformat(settings.get("date_to", ""))
+        except ValueError:
+            end = None
+        return (start, end) if end is None or end >= start else (end, start)
+    return today - timedelta(days=int(settings["lookback_days"])), None
 
 
 def ensure_dirs() -> None:

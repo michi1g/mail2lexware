@@ -20,13 +20,36 @@
       <div class="field">
         <label for="query">Suchanfrage</label>
         <textarea id="query" name="query" rows="3" spellcheck="false" autocomplete="off">{{ s.query }}</textarea>
-        <span class="help">Gmail-Suchsyntax, zum Beispiel <code>from:buchhaltung@firma.de</code>. Das Datum ergänzt das Tool selbst.</span>
+        <span class="help">Gmail-Suchsyntax, zum Beispiel <code>from:buchhaltung@firma.de</code>. Den Zeitraum ergänzt das Tool selbst.</span>
       </div>
       <div class="fields-row">
         <div class="field">
-          <label for="lookback_days">Zeitfenster</label>
+          <label for="period">Zeitraum</label>
+          <div class="select-wrap">
+            <select id="period" name="period" data-period>
+              <option value="days" {% if s.period == 'days' %}selected{% endif %}>Letzte Tage</option>
+              <option value="this_year" {% if s.period == 'this_year' %}selected{% endif %}>Dieses Jahr</option>
+              <option value="last_year" {% if s.period == 'last_year' %}selected{% endif %}>Letztes Jahr</option>
+              <option value="custom" {% if s.period == 'custom' %}selected{% endif %}>Eigener Zeitraum</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" data-period-for="days" {% if s.period != 'days' %}hidden{% endif %}>
+          <label for="lookback_days">Anzahl Tage</label>
           <div class="input-suffix"><input id="lookback_days" type="number" min="1" name="lookback_days" value="{{ s.lookback_days }}"><span>Tage</span></div>
         </div>
+        <div class="field" data-period-for="custom" {% if s.period != 'custom' %}hidden{% endif %}>
+          <label for="date_from">Von</label>
+          <input id="date_from" type="date" name="date_from" value="{{ s.date_from }}">
+        </div>
+        <div class="field" data-period-for="custom" {% if s.period != 'custom' %}hidden{% endif %}>
+          <label for="date_to">Bis</label>
+          <input id="date_to" type="date" name="date_to" value="{{ s.date_to }}">
+          <span class="help">Leer lassen für bis heute.</span>
+        </div>
+      </div>
+      <p class="help" data-period-note>{{ period_text }}</p>
+      <div class="fields-row">
         <div class="field">
           <label for="min_size_bytes">Mindestgröße</label>
           <div class="input-suffix"><input id="min_size_bytes" type="number" min="0" name="min_size_bytes" value="{{ s.min_size_bytes }}"><span>Bytes</span></div>

@@ -252,7 +252,10 @@ def create_app(start_scheduler: bool = True) -> Flask:
             exts = [("." + e.strip().lower().lstrip(".")) for e in f.get("extensions", "").split(",") if e.strip()]
             s.update(
                 query=f.get("query", "").strip() or s["query"],
+                period=f.get("period") if f.get("period") in config.PERIODS else "days",
                 lookback_days=_int(f.get("lookback_days"), s["lookback_days"], 1),
+                date_from=f.get("date_from", "").strip(),
+                date_to=f.get("date_to", "").strip(),
                 extensions=[e for e in exts if e in ALLOWED_EXTENSIONS] or s["extensions"],
                 min_size_bytes=_int(f.get("min_size_bytes"), s["min_size_bytes"]),
                 label=f.get("label", "").strip(),
@@ -265,7 +268,10 @@ def create_app(start_scheduler: bool = True) -> Flask:
             config.save_settings(s)
             flash("Einstellungen gespeichert.", "ok")
             return redirect(url_for("settings"))
-        return render_template("settings.html", s=s, key_from_env=bool(os.environ.get("LEXWARE_API_KEY")))
+        since, until = config.period_range(s)
+        period_text = (f"Durchsucht werden Mails ab {since:%d.%m.%Y}" + (f" bis {until:%d.%m.%Y}." if until else " bis heute."))
+        return render_template("settings.html", s=s, period_text=period_text,
+                               key_from_env=bool(os.environ.get("LEXWARE_API_KEY")))
 
     # --- Verbindungen -----------------------------------------------------
     @app.get("/connections")

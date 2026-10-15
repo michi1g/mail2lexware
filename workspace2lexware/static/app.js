@@ -20,6 +20,16 @@
     if (e.persisted) document.querySelectorAll(".is-loading").forEach((b) => b.classList.remove("is-loading"));
   });
 
+  // Einstellungen: nur die zum Zeitraum passenden Felder zeigen
+  const period = document.querySelector("[data-period]");
+  if (period) {
+    const sync = () => document.querySelectorAll("[data-period-for]").forEach((el) => {
+      el.hidden = el.dataset.periodFor !== period.value;
+    });
+    period.addEventListener("change", sync);
+    sync();
+  }
+
   // Läuft gerade ein Durchlauf? Dann Status abfragen und danach neu laden.
   if (document.body.dataset.running === "true") {
     const poll = async () => {

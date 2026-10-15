@@ -2,7 +2,7 @@
 import hashlib
 import logging
 import threading
-from datetime import date, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 import requests
@@ -44,8 +44,10 @@ def _upload(doc, client: LexwareClient) -> bool:
 
 def _scan(settings: dict, gmail_service) -> tuple[int, list[int]]:
     """Legt neue Anhänge in der DB an. Gibt (Anzahl neu, IDs für direkten Upload) zurück."""
-    since = date.today() - timedelta(days=int(settings["lookback_days"]))
+    since, until = config.period_range(settings)
     query = f"{settings['query']} after:{since:%Y/%m/%d}"
+    if until:  # Gmail-"before" schließt den Tag selbst aus
+        query += f" before:{until + timedelta(days=1):%Y/%m/%d}"
     if settings["label"]:
         query += f' -label:"{settings["label"]}"'
     extensions = {e.lower() for e in settings["extensions"]}
