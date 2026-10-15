@@ -1,37 +1,70 @@
 {% extends "base.html" %}
+{% block title %}Verlauf{% endblock %}
 {% block content %}
-<h1>Verlauf</h1>
-<div class="tabs">
-  <a href="{{ url_for('history') }}" {% if not current %}class="active"{% endif %}>Alle</a>
-  {% for key, label in status_labels.items() %}
-    <a href="{{ url_for('history', status=key) }}" {% if current == key %}class="active"{% endif %}>{{ label }} ({{ counts.get(key, 0) }})</a>
-  {% endfor %}
+<div class="page-head rise">
+  <div class="grow">
+    <h1>Verlauf</h1>
+    <p class="lead">Alle erfassten Belege mit Status. Fehlgeschlagene Uploads kannst du hier erneut anstoßen.</p>
+  </div>
 </div>
-<table>
-  <thead><tr><th>Datum</th><th>Absender / Betreff</th><th>Datei</th><th>Status</th><th></th></tr></thead>
-  <tbody>
-  {% for d in docs %}
-    <tr>
-      <td>{{ d.mail_date|dt }}</td>
-      <td><strong>{{ d.sender }}</strong><br>{{ d.subject }}</td>
-      <td><a href="{{ url_for('file', doc_id=d.id) }}" target="_blank">{{ d.filename }}</a></td>
-      <td><span class="badge {{ d.status }}">{{ status_labels[d.status] }}</span>
-        {% if d.error %}<br><span class="err">{{ d.error }}</span>{% endif %}
-        {% if d.lexware_id %}<br><span class="muted">{{ d.lexware_id }}</span>{% endif %}</td>
-      <td>
-        {% if d.status in ('failed', 'ignored') %}
-        <form method="post" action="{{ url_for('review_action') }}">
-          <input type="hidden" name="csrf" value="{{ csrf }}">
-          <input type="hidden" name="ids" value="{{ d.id }}">
-          {% if d.status == 'failed' %}<button name="action" value="upload">Erneut versuchen</button>
-          {% else %}<button name="action" value="requeue">Zur Prüfung</button>{% endif %}
-        </form>
-        {% endif %}
-      </td>
-    </tr>
-  {% else %}
-    <tr><td colspan="5" class="empty">Keine Einträge.</td></tr>
+
+<nav class="segmented rise" style="--i: 1" aria-label="Status filtern">
+  <a href="{{ url_for('history') }}" {% if not current %}aria-current="true"{% endif %}>Alle</a>
+  {% for key, label in status_labels.items() %}
+    <a href="{{ url_for('history', status=key) }}" {% if current == key %}aria-current="true"{% endif %}>{{ label }} <span class="n">{{ counts.get(key, 0) }}</span></a>
   {% endfor %}
-  </tbody>
-</table>
+</nav>
+
+<section class="panel rise" style="--i: 2">
+  {% if docs %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Datum</th><th>Absender und Betreff</th><th>Datei</th><th>Status</th><th><span class="sr-only">Aktion</span></th></tr></thead>
+      <tbody>
+      {% for d in docs %}
+        <tr>
+          <td class="num cell-sub" style="white-space: nowrap">{{ d.mail_date|dt }}</td>
+          <td>
+            <div class="cell-title">{{ d.sender or d.sender_email }}</div>
+            <div class="cell-sub">{{ d.subject or 'Ohne Betreff' }}</div>
+          </td>
+          <td>
+            <a class="cell-file" href="{{ url_for('file', doc_id=d.id) }}" target="_blank" rel="noopener">
+              {{ icon('file-pdf' if (d.filename|fext) == 'pdf' else 'file-code' if (d.filename|fext) == 'xml' else 'file-image') }}<span>{{ d.filename }}</span>
+            </a>
+          </td>
+          <td>
+            {% if d.status == 'uploaded' %}<span class="chip ok">{{ icon('check-circle', 'fill') }}{{ status_labels[d.status] }}</span>
+            {% elif d.status == 'failed' %}<span class="chip err">{{ icon('warning-circle', 'fill') }}{{ status_labels[d.status] }}</span>
+            {% elif d.status == 'pending' %}<span class="chip warn">{{ status_labels[d.status] }}</span>
+            {% else %}<span class="chip">{{ status_labels[d.status] }}</span>{% endif %}
+            {% if d.error %}<div class="doc-error" style="margin-top: 6px; max-width: 42ch">{{ d.error }}</div>{% endif %}
+            {% if d.lexware_id %}<div class="muted mono" style="margin-top: 6px; font-size: 12px">{{ d.lexware_id }}</div>{% endif %}
+          </td>
+          <td style="text-align: right">
+            {% if d.status in ('failed', 'ignored') %}
+            <form method="post" action="{{ url_for('review_action') }}">
+              <input type="hidden" name="csrf" value="{{ csrf }}">
+              <input type="hidden" name="ids" value="{{ d.id }}">
+              {% if d.status == 'failed' %}
+                <button class="btn" name="action" value="upload" data-loading>{{ icon('arrow-clockwise') }}Erneut versuchen</button>
+              {% else %}
+                <button class="btn" name="action" value="requeue" data-loading>Zur Prüfung</button>
+              {% endif %}
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">
+    <span class="empty-icon">{{ icon('folder-open') }}</span>
+    <h2>Keine Einträge</h2>
+    <p>{{ 'In diesem Status gibt es noch keine Belege.' if current else 'Sobald das erste Mal Gmail durchsucht wurde, erscheinen die Belege hier.' }}</p>
+  </div>
+  {% endif %}
+</section>
 {% endblock %}

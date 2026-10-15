@@ -1,9 +1,25 @@
 {% extends "base.html" %}
+{% block title %}Anmelden{% endblock %}
+{% block header %}{% endblock %}
 {% block content %}
-<form method="post" class="card narrow">
-  <h1>Anmelden</h1>
-  <input type="hidden" name="csrf" value="{{ csrf }}">
-  <label>Passwort <input type="password" name="password" autofocus required></label>
-  <button class="primary">Anmelden</button>
-</form>
+<div class="center-stage">
+  <form method="post" class="panel auth-card rise">
+    <div>
+      <a class="brand" href="{{ url_for('login') }}">
+        <span class="brand-mark">{{ icon('receipt', 'bold') }}</span>
+        <span class="brand-name">Workspace {{ icon('arrow-right', 'bold') }} Lexware</span>
+      </a>
+    </div>
+    <div>
+      <h1>Anmelden</h1>
+      <p class="lead">Gib das GUI-Passwort ein, das du beim Start des Containers gesetzt hast.</p>
+    </div>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="field">
+      <label for="password">Passwort</label>
+      <input id="password" type="password" name="password" autocomplete="current-password" autofocus required>
+    </div>
+    <button class="btn btn-primary btn-block" data-loading>Anmelden</button>
+  </form>
+</div>
 {% endblock %}

@@ -3,26 +3,55 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Workspace → Lexware{% endblock %}</title>
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Rechnungen aus Gmail prüfen und nach Lexware Office übertragen.">
+  <title>{% block title %}Prüfen{% endblock %} · Workspace Lexware</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="preload" href="{{ url_for('static', filename='fonts/geist-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
-<body>
-<header>
-  <strong class="brand">Workspace → Lexware</strong>
-  {% if request.endpoint != 'login' %}
-  <nav>
-    {% for ep, label in [('review', 'Prüfen'), ('history', 'Verlauf'), ('rules', 'Absender-Regeln'), ('settings', 'Einstellungen'), ('connections', 'Verbindungen')] %}
-      <a href="{{ url_for(ep) }}" {% if request.endpoint == ep %}class="active"{% endif %}>{{ label }}</a>
-    {% endfor %}
-  </nav>
-  {% if auth_enabled %}
-  <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link">Abmelden</button></form>
-  {% endif %}
-  {% endif %}
+<body data-running="{{ 'true' if running else 'false' }}">
+<a class="skip" href="#main">Zum Inhalt springen</a>
+{% block header %}
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="{{ url_for('review') }}" aria-label="Workspace nach Lexware, Startseite">
+      <span class="brand-mark">{{ icon('receipt', 'bold') }}</span>
+      <span class="brand-name">Workspace {{ icon('arrow-right', 'bold') }} Lexware</span>
+    </a>
+    <nav class="nav" aria-label="Hauptnavigation">
+      {% for ep, label, name in [('review', 'Prüfen', 'tray'), ('history', 'Verlauf', 'clock-counter-clockwise'), ('rules', 'Regeln', 'funnel-simple'), ('settings', 'Einstellungen', 'sliders-horizontal'), ('connections', 'Verbindungen', 'plugs-connected')] %}
+        <a href="{{ url_for(ep) }}" title="{{ label }}" {% if request.endpoint == ep %}aria-current="page"{% endif %}>
+          {{ icon(name) }}<span class="label">{{ label }}</span>
+          {% if ep == 'review' and pending_count %}<span class="count">{{ pending_count }}</span>{% endif %}
+        </a>
+      {% endfor %}
+    </nav>
+    <div class="topbar-end">
+      <a class="status-link {{ 'ok' if gmail_ready else 'warn' }}" href="{{ url_for('connections') }}" title="{{ 'Gmail verbunden' if gmail_ready else 'Gmail nicht verbunden' }}">
+        {{ icon('check-circle' if gmail_ready else 'warning', 'fill') }}<span class="label">Gmail</span>
+      </a>
+      <a class="status-link {{ 'ok' if lexware_ready else 'warn' }}" href="{{ url_for('settings') }}" title="{{ 'Lexware-API-Key gesetzt' if lexware_ready else 'Lexware-API-Key fehlt' }}">
+        {{ icon('check-circle' if lexware_ready else 'warning', 'fill') }}<span class="label">Lexware</span>
+      </a>
+      {% if auth_enabled %}
+      <form method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn btn-quiet btn-icon" title="Abmelden" aria-label="Abmelden">{{ icon('sign-out') }}</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
 </header>
-<main>
+{% endblock %}
+<main id="main">
   {% for category, message in get_flashed_messages(with_categories=true) %}
-    <div class="flash {{ category }}">{{ message }}</div>
+    <div class="flash {{ category }}" role="status">
+      {{ icon('check-circle' if category == 'ok' else 'warning-circle', 'fill') }}
+      <span class="flash-text">{{ message }}</span>
+      <button type="button" data-dismiss aria-label="Hinweis schließen">{{ icon('x') }}</button>
+    </div>
   {% endfor %}
   {% block content %}{% endblock %}
 </main>

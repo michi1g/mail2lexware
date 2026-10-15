@@ -1,26 +1,55 @@
 {% extends "base.html" %}
+{% block title %}Regeln{% endblock %}
 {% block content %}
-<h1>Absender-Regeln</h1>
-<p class="muted">Eine Adresse (<code>rechnung@firma.de</code>) oder Domain (<code>firma.de</code>). Eine exakte Adresse hat Vorrang vor der Domain.
-„Immer“ lädt Belege automatisch hoch, „Nie“ ignoriert sie.</p>
-<form method="post" action="{{ url_for('rules_add') }}" class="inline">
-  <input type="hidden" name="csrf" value="{{ csrf }}">
-  <input name="pattern" placeholder="adresse@domain.de oder domain.de" required>
-  <select name="action"><option value="always">Immer hochladen</option><option value="never">Nie hochladen</option></select>
-  <button class="primary">Hinzufügen</button>
-</form>
-<table>
-  <thead><tr><th>Absender</th><th>Aktion</th><th></th></tr></thead>
-  <tbody>
-  {% for r in rules %}
-    <tr>
-      <td>{{ r.pattern }}</td>
-      <td>{{ 'Immer hochladen' if r.action == 'always' else 'Nie hochladen' }}</td>
-      <td><form method="post" action="{{ url_for('rules_delete', rule_id=r.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Löschen</button></form></td>
-    </tr>
+<div class="page-head rise">
+  <div class="grow">
+    <h1>Absender-Regeln</h1>
+    <p class="lead">Lege pro Adresse oder Domain fest, was mit Belegen passiert. Eine exakte Adresse hat Vorrang vor einer Domain.</p>
+  </div>
+</div>
+
+<section class="panel rise" style="--i: 1">
+  <form method="post" action="{{ url_for('rules_add') }}" class="rule-add">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="field">
+      <label for="pattern">Adresse oder Domain</label>
+      <input id="pattern" name="pattern" placeholder="buchhaltung@lieferant.de oder lieferant.de" autocomplete="off" required>
+    </div>
+    <div class="field">
+      <label for="action">Aktion</label>
+      <div class="select-wrap">
+        <select id="action" name="action">
+          <option value="always">Immer hochladen</option>
+          <option value="never">Nie hochladen</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" data-loading>{{ icon('plus', 'bold') }}Hinzufügen</button>
+  </form>
+
+  {% if rules %}
+  <ul class="list-plain">
+    {% for r in rules %}
+    <li class="rule-row">
+      <span class="pattern">{{ r.pattern }}</span>
+      {% if r.action == 'always' %}
+        <span class="chip ok">{{ icon('upload-simple', 'bold') }}Immer hochladen</span>
+      {% else %}
+        <span class="chip">{{ icon('prohibit') }}Nie hochladen</span>
+      {% endif %}
+      <form method="post" action="{{ url_for('rules_delete', rule_id=r.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn btn-danger-quiet btn-icon" title="Regel löschen" aria-label="Regel für {{ r.pattern }} löschen">{{ icon('trash') }}</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
   {% else %}
-    <tr><td colspan="3" class="empty">Noch keine Regeln.</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
+  <div class="empty compact">
+    <span class="empty-icon">{{ icon('funnel-simple') }}</span>
+    <h2>Noch keine Regeln</h2>
+    <p>Regeln entstehen auch direkt beim Prüfen: Wähle Belege aus und klicke auf „Absender: immer“ oder „Absender: nie“.</p>
+  </div>
+  {% endif %}
+</section>
 {% endblock %}

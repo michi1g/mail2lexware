@@ -106,7 +106,7 @@ def run_cycle() -> dict:
         result["new"], ids = _scan(settings, gmail_service)
         ids += [d["id"] for d in db.retryable_failed()]
         if ids and not client:
-            result["error"] = "Kein Lexware-API-Key hinterlegt – Uploads übersprungen."
+            result["error"] = "Kein Lexware-API-Key hinterlegt. Uploads wurden übersprungen."
         elif client:
             for doc_id in ids:
                 ok = _upload(db.get_document(doc_id), client)

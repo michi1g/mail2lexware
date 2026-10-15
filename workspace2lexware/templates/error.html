@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Fehler {{ code }}{% endblock %}
+{% block content %}
+<div class="error-stage rise">
+  <span class="error-code">{{ code }}</span>
+  <h1>{{ 'Diese Seite gibt es nicht' if code == 404 else 'Die Anfrage konnte nicht verarbeitet werden' }}</h1>
+  <p>{{ 'Die Adresse ist falsch oder der Eintrag wurde entfernt.' if code == 404 else message }}</p>
+  <a class="btn btn-primary" href="{{ url_for('review') }}">{{ icon('tray') }}Zur Prüfung</a>
+</div>
+{% endblock %}

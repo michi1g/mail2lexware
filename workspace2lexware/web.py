@@ -3,9 +3,12 @@ import os
 import secrets
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+from functools import lru_cache
+from pathlib import Path
 
-from flask import (Flask, abort, flash, redirect, render_template, request, send_file, session, url_for)
+from flask import (Flask, abort, flash, jsonify, redirect, render_template, request, send_file, session, url_for)
+from markupsafe import Markup
 
 from . import config, db, gmail, scheduler, service
 from .lexware import LexwareClient, LexwareError
@@ -16,6 +19,35 @@ MIME = {".pdf": "application/pdf", ".xml": "text/plain", ".jpg": "image/jpeg", "
         ".png": "image/png"}
 STATUS_LABELS = {"pending": "Zu prüfen", "uploaded": "Hochgeladen", "ignored": "Ignoriert",
                  "failed": "Fehlgeschlagen", "duplicate": "Duplikat"}
+
+
+ICON_DIR = Path(__file__).parent / "static" / "icons"
+
+
+@lru_cache(maxsize=None)
+def _icon_svg(name: str, weight: str) -> str:
+    suffix = "" if weight == "regular" else f"-{weight}"
+    return (ICON_DIR / f"{name}{suffix}.svg").read_text(encoding="utf-8")
+
+
+def icon(name: str, weight: str = "regular", cls: str = "") -> Markup:
+    """Phosphor-Icon inline einbinden (erbt die Textfarbe über currentColor)."""
+    svg = _icon_svg(name, weight).replace("<svg ", f'<svg class="icon {cls}" aria-hidden="true" focusable="false" ', 1)
+    return Markup(svg)
+
+
+def _ago(value: str | None) -> str:
+    if not value:
+        return ""
+    seconds = (datetime.now(timezone.utc) - datetime.fromisoformat(value)).total_seconds()
+    if seconds < 60:
+        return "gerade eben"
+    if seconds < 3600:
+        return f"vor {int(seconds // 60)} Min."
+    if seconds < 86400:
+        return f"vor {int(seconds // 3600)} Std."
+    days = int(seconds // 86400)
+    return "gestern" if days == 1 else f"vor {days} Tagen"
 
 
 def _int(value, default: int, minimum: int = 0) -> int:
@@ -44,7 +76,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
         if request.method == "POST":
             sent = request.form.get("csrf", "")
             if not sent or not hmac.compare_digest(sent, session.get("csrf", "")):
-                abort(400, "Ungültiges CSRF-Token – Seite neu laden.")
+                abort(400, "Die Sitzung ist abgelaufen. Lade die Seite neu und versuche es erneut.")
         return None
 
     @app.after_request
@@ -58,13 +90,24 @@ def create_app(start_scheduler: bool = True) -> Flask:
         if "csrf" not in session:
             session["csrf"] = secrets.token_urlsafe(24)
         return {"csrf": session["csrf"], "auth_enabled": bool(password), "running": service.is_running(),
-                "status_labels": STATUS_LABELS}
+                "status_labels": STATUS_LABELS, "icon": icon,
+                "gmail_ready": config.TOKEN_FILE.exists(),
+                "lexware_ready": bool(config.api_key(config.load_settings())),
+                "pending_count": db.counts().get("pending", 0) + db.counts().get("failed", 0)}
 
     @app.template_filter("dt")
     def fmt_dt(value):
         if not value:
             return ""
         return datetime.fromisoformat(value).astimezone().strftime("%d.%m.%Y %H:%M")
+
+    @app.template_filter("ago")
+    def fmt_ago(value):
+        return _ago(value)
+
+    @app.template_filter("fext")
+    def file_ext(filename):
+        return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
     @app.template_filter("kb")
     def fmt_kb(value):
@@ -75,6 +118,15 @@ def create_app(start_scheduler: bool = True) -> Flask:
     def health():
         return "ok"
 
+    @app.get("/status")
+    def status():
+        return jsonify(running=service.is_running())
+
+    @app.errorhandler(400)
+    @app.errorhandler(404)
+    def error_page(e):
+        return render_template("error.html", code=e.code, message=e.description), e.code
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         if not password:
@@ -82,7 +134,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
         if request.method == "POST":
             sent = request.form.get("csrf", "")
             if not sent or not hmac.compare_digest(sent, session.get("csrf", "")):
-                abort(400, "Ungültiges CSRF-Token – Seite neu laden.")
+                abort(400, "Die Sitzung ist abgelaufen. Lade die Seite neu und versuche es erneut.")
             if hmac.compare_digest(request.form.get("password", ""), password):
                 session["auth"] = True
                 return redirect(url_for("review"))
@@ -116,7 +168,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
         action = request.form.get("action", "")
         docs = [d for d in (db.get_document(i) for i in ids) if d]
         if not docs:
-            flash("Nichts ausgewählt.", "error")
+            flash("Wähle mindestens einen Beleg aus.", "error")
             return redirect(request.referrer or url_for("review"))
 
         if action in ("always", "never"):
@@ -133,11 +185,11 @@ def create_app(start_scheduler: bool = True) -> Flask:
             if r["error"]:
                 flash(r["error"], "error")
             else:
-                flash(f"{r['uploaded']} hochgeladen, {r['failed']} fehlgeschlagen.", "error" if r["failed"] else "ok")
+                flash(f"{r['uploaded']} hochgeladen" + (f", {r['failed']} fehlgeschlagen" if r["failed"] else "") + ".", "error" if r["failed"] else "ok")
         elif action == "ignore":
             for i in ids:
                 db.set_status(i, "ignored")
-            flash(f"{len(ids)} ignoriert.", "ok")
+            flash(f"{len(ids)} ignoriert. Im Verlauf kannst du sie zurück zur Prüfung legen.", "ok")
         elif action == "requeue":
             for i in ids:
                 db.set_status(i, "pending")
@@ -150,7 +202,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
             flash("Es läuft bereits ein Durchlauf.", "error")
         else:
             threading.Thread(target=service.run_cycle, daemon=True).start()
-            flash("Durchlauf gestartet – Seite in einigen Sekunden neu laden.", "ok")
+            flash("Durchlauf gestartet.", "ok")
         return redirect(url_for("review"))
 
     @app.get("/file/<int:doc_id>")
