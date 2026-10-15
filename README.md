@@ -16,7 +16,7 @@
 
 ## Voraussetzungen
 
-- Lexware Office mit Zugang zur **Public API** (laut Hersteller nur im Tarif XL). API-Key unter *Einstellungen → Public API* erzeugen.
+- Lexware Office mit Zugang zur **Public API** (laut Hersteller nur im Tarif XL). API-Key unter *Einstellungen → Public API* erzeugen. Getestet mit diesen Rechten: Allgemeine Profilinformationen abrufen, Belegbilder hochladen, Belege abrufen, Belege herunterladen, Belege speichern, Belegliste filtern und abrufen, Zahlungsinformationen von Belegen abrufen. Zwingend nötig ist nur „Belegbilder hochladen“. Mit dem Profil-Recht liefert der Verbindungstest zusätzlich den Firmennamen.
 - Google-Cloud-Projekt mit aktivierter **Gmail API** und einem OAuth-Client vom Typ **Desktop-App**. Bei Workspace die OAuth-Zustimmung als **„Intern“** konfigurieren: Dann läuft der Refresh-Token nicht nach 7 Tagen ab. Benötigter Scope: `gmail.modify` (Lesen und Labels setzen, kein Senden oder Löschen).
 
 ## Betrieb auf Unraid

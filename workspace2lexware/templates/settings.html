@@ -114,7 +114,7 @@
         <input id="lexware_api_key" type="password" name="lexware_api_key" autocomplete="off"
                placeholder="{{ 'Über Umgebungsvariable gesetzt' if key_from_env else ('Gesetzt, leer lassen zum Beibehalten' if s.lexware_api_key else 'Noch nicht gesetzt') }}"
                {% if key_from_env %}disabled{% endif %}>
-        <span class="help">Der Key wird nur im Datenordner des Containers gespeichert und nie wieder angezeigt.</span>
+        <span class="help">Der Key braucht mindestens das Recht „Belegbilder hochladen“. Für den Verbindungstest mit Firmenname zusätzlich „Allgemeine Profilinformationen abrufen“. Er wird nur im Datenordner des Containers gespeichert und nie wieder angezeigt.</span>
       </div>
     </div>
   </section>
