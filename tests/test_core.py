@@ -54,7 +54,7 @@ def test_label_only_when_all_docs_resolved():
     assert "m1" not in db.messages_to_label()
 
 
-def test_lexware_test_connection_403_fallback(monkeypatch):
+def test_lexware_test_connection():
     import pytest
     from workspace2lexware.lexware import LexwareClient, LexwareError
 
@@ -62,18 +62,16 @@ def test_lexware_test_connection_403_fallback(monkeypatch):
         def __init__(self, status, body=None): self.status_code, self._b, self.ok, self.text = status, body or {}, status < 400, ""
         def json(self): return self._b
 
-    def client(profile, countries):
+    def client(profile):
         c = LexwareClient("k")
-        c.session.get = lambda url, timeout, params=None: profile if url.endswith("/profile") else countries
+        c.session.get = lambda url, timeout: profile
         return c
 
-    assert client(R(200, {"companyName": "Muster GmbH"}), R(200)).test_connection() == "Muster GmbH"
-    assert client(R(403), R(200)).test_connection() == ""
-    assert client(R(403), R(400)).test_connection() == ""
-    with pytest.raises(LexwareError, match="Tarif XL"):
-        client(R(403), R(403)).test_connection()
+    assert client(R(200, {"companyName": "Muster GmbH"})).test_connection() == "Muster GmbH"
+    with pytest.raises(LexwareError, match="Profilinformationen"):
+        client(R(403)).test_connection()
     with pytest.raises(LexwareError, match="ungültig"):
-        client(R(401), R(401)).test_connection()
+        client(R(401)).test_connection()
 
 
 def test_period_range():
