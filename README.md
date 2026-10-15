@@ -133,3 +133,7 @@ DATA_DIR=data python -m workspace2lexware            # http://localhost:8080
 - Die Erkennung ist stichwort- und textbasiert. Der Score hilft beim Aussortieren, ersetzt aber nicht die Prüfung. Gescannte PDFs ohne Text erhalten nur über den Dateinamen Punkte und landen im Modus „automatisch“ meist in der manuellen Prüfung.
 - Rechnungen, die nur im Mailtext stehen oder hinter Download-Links liegen, werden nicht erfasst.
 - Der Upload nutzt `POST /v1/files` mit `type=voucher`, der Verbindungstest `GET /v1/profile` der Lexware-Office-API. Das Tool legt Belege nur im Eingang ab, es bucht nichts.
+
+## Lizenz
+
+MIT, siehe [LICENSE](LICENSE). Lizenzen der enthaltenen Schriften und Icons stehen in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
