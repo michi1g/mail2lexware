@@ -1,4 +1,4 @@
-# workspace2lexware
+# mail2lexware
 
 Überträgt Rechnungs-Anhänge (PDF, XRechnung/ZUGFeRD-XML, optional Bilder) aus Gmail / Google Workspace, IMAP-Postfächern und Microsoft 365 per API in den Belege-Eingang („Zu prüfen“) von Lexware Office.
 
