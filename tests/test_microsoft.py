@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 import requests
 
-from workspace2lexware import microsoft as ms
+from mail2lexware import microsoft as ms
 
 
 def _resp(status=200, body=None):

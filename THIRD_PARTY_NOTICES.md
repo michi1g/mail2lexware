@@ -4,14 +4,14 @@ Dieses Projekt steht unter der MIT-Lizenz (siehe `LICENSE`). Folgende Komponente
 
 ## Geist und Geist Mono (Schriften)
 
-- Dateien: `workspace2lexware/static/fonts/`
+- Dateien: `mail2lexware/static/fonts/`
 - Copyright 2024 The Geist Project Authors (https://github.com/vercel/geist-font)
-- Lizenz: SIL Open Font License, Version 1.1. Der vollständige Lizenztext liegt in `workspace2lexware/static/fonts/OFL-geist.txt`.
+- Lizenz: SIL Open Font License, Version 1.1. Der vollständige Lizenztext liegt in `mail2lexware/static/fonts/OFL-geist.txt`.
 - Bezogen über das Paket `@fontsource-variable/geist` bzw. `@fontsource-variable/geist-mono`.
 
 ## Phosphor Icons (Icons)
 
-- Dateien: `workspace2lexware/static/icons/` sowie das Favicon `workspace2lexware/static/favicon.svg` (enthält ein Phosphor-Icon)
+- Dateien: `mail2lexware/static/icons/` sowie das Favicon `mail2lexware/static/favicon.svg` (enthält ein Phosphor-Icon)
 - Copyright (c) 2020 Phosphor Icons (https://phosphoricons.com)
 - Lizenz: MIT
 - Bezogen über das Paket `@phosphor-icons/core`.

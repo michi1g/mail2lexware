@@ -10,7 +10,7 @@ import requests
 from . import config, db, detect, gmail, imap_source, microsoft, secrets_store
 from .lexware import LexwareClient, LexwareError
 
-log = logging.getLogger("workspace2lexware")
+log = logging.getLogger("mail2lexware")
 _lock = threading.Lock()  # nur ein Durchlauf bzw. Upload gleichzeitig (Rate-Limit, SQLite)
 
 

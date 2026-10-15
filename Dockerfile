@@ -13,7 +13,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY workspace2lexware ./workspace2lexware
+COPY mail2lexware ./mail2lexware
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && mkdir /data
@@ -27,4 +27,4 @@ HEALTHCHECK --interval=60s --timeout=5s --start-period=15s \
     CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/health' % os.environ['PORT'], timeout=3)"
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["python", "-m", "workspace2lexware"]
+CMD ["python", "-m", "mail2lexware"]

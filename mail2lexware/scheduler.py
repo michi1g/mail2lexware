@@ -4,7 +4,7 @@ import time
 
 from . import config, service
 
-log = logging.getLogger("workspace2lexware")
+log = logging.getLogger("mail2lexware")
 
 
 def _loop() -> None:

@@ -2,8 +2,8 @@ import re
 
 import pytest
 
-from workspace2lexware import db, detect
-from workspace2lexware.web import create_app
+from mail2lexware import db, detect
+from mail2lexware.web import create_app
 
 
 @pytest.fixture(scope="module")
@@ -56,7 +56,7 @@ def test_label_only_when_all_docs_resolved():
 
 def test_lexware_test_connection():
     import pytest
-    from workspace2lexware.lexware import LexwareClient, LexwareError
+    from mail2lexware.lexware import LexwareClient, LexwareError
 
     class R:
         def __init__(self, status, body=None): self.status_code, self._b, self.ok, self.text = status, body or {}, status < 400, ""
@@ -76,7 +76,7 @@ def test_lexware_test_connection():
 
 def test_period_range():
     from datetime import date
-    from workspace2lexware import config
+    from mail2lexware import config
     today = date(2026, 10, 15)
     base = dict(config.DEFAULTS)
     assert config.period_range(base, today) == (date(2026, 9, 15), None)
@@ -113,7 +113,7 @@ def test_add_rule_and_save_settings(client):
 
 
 def test_cycle_scan_upload_and_label(monkeypatch):
-    from workspace2lexware import config, gmail, service
+    from mail2lexware import config, gmail, service
 
     pdf = b"%PDF-1.4 Rechnungsnummer 1 Gesamtbetrag IBAN MwSt " + b"x" * 4000
     mail = gmail.Mail("mail-42", "Ihre Rechnung", "Firma", "buchhaltung@lieferant.de", "2026-10-01T10:00:00+00:00",

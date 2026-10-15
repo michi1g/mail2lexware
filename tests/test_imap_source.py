@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from workspace2lexware import imap_source
-from workspace2lexware.imap_source import ImapConfig, ImapError
+from mail2lexware import imap_source
+from mail2lexware.imap_source import ImapConfig, ImapError
 
 PDF = b"%PDF-1.4 dummy " + b"x" * 200
 MONATE = {m: i + 1 for i, m in enumerate(

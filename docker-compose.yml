@@ -1,8 +1,8 @@
 services:
-  workspace2lexware:
-    image: ghcr.io/michi1g/workspace2lexware:latest
+  mail2lexware:
+    image: ghcr.io/michi1g/mail2lexware:latest
     # build: .   # zum lokalen Bauen statt Image aus der Registry
-    container_name: workspace2lexware
+    container_name: mail2lexware
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -12,4 +12,4 @@ services:
       # LEXWARE_API_KEY: ""   # optional; alternativ in der GUI unter Einstellungen
       # W2L_ENCRYPTION_KEY: ""   # empfohlen: lange Zufallszeichenfolge, hier eigenen Wert setzen (nicht ins Repo committen)
     volumes:
-      - /mnt/user/appdata/workspace2lexware:/data
+      - /mnt/user/appdata/mail2lexware:/data

@@ -4,8 +4,8 @@ import sqlite3
 
 import pytest
 
-from workspace2lexware import config, db, gmail, imap_source, microsoft, secrets_store, service
-from workspace2lexware.web import create_app
+from mail2lexware import config, db, gmail, imap_source, microsoft, secrets_store, service
+from mail2lexware.web import create_app
 
 
 @pytest.fixture(scope="module")

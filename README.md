@@ -29,15 +29,15 @@ Die Bedienung läuft über eine Web-GUI. Das Tool ist als Docker-Container gedac
 
 ## Installation
 
-Das Image liegt in der GitHub Container Registry: `ghcr.io/michi1g/workspace2lexware:latest`.
+Das Image liegt in der GitHub Container Registry: `ghcr.io/michi1g/mail2lexware:latest`.
 
 ### Docker Compose
 
 ```yaml
 services:
-  workspace2lexware:
-    image: ghcr.io/michi1g/workspace2lexware:latest
-    container_name: workspace2lexware
+  mail2lexware:
+    image: ghcr.io/michi1g/mail2lexware:latest
+    container_name: mail2lexware
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -54,7 +54,7 @@ Die mitgelieferte `docker-compose.yml` entspricht diesem Beispiel. Danach `docke
 
 ### Unraid
 
-Die Datei `unraid/workspace2lexware.xml` nach `/boot/config/plugins/dockerMan/templates-user/` kopieren und unter *Docker → Add Container* das Template wählen. Als Datenordner ist `/mnt/user/appdata/workspace2lexware` voreingestellt.
+Die Datei `unraid/mail2lexware.xml` nach `/boot/config/plugins/dockerMan/templates-user/` kopieren und unter *Docker → Add Container* das Template wählen. Als Datenordner ist `/mnt/user/appdata/mail2lexware` voreingestellt.
 
 ### Daten und Updates
 
@@ -125,7 +125,7 @@ Lexware-API-Key, IMAP-Passwörter, Microsoft-Tokens, Gmail-Token und `credential
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 pytest
-DATA_DIR=data python -m workspace2lexware            # http://localhost:8080
+DATA_DIR=data python -m mail2lexware            # http://localhost:8080
 ```
 
 ## Grenzen
