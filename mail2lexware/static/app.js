@@ -99,20 +99,59 @@
     openEl.href = row.dataset.url;
     openEl.hidden = false;
 
-    frameBox.querySelector("iframe, img")?.remove();
+    frameBox.querySelector("iframe, img, .preview-pages, .preview-note")?.remove();
     const ext = row.dataset.ext;
     let el;
     if (["jpg", "jpeg", "png"].includes(ext)) {
       el = document.createElement("img");
       el.alt = "Vorschau von " + row.dataset.name;
       el.src = row.dataset.url;
+    } else if (ext === "pdf") {
+      // Seiten als Bilder vom Server: der PDF-Viewer des Browsers ist in Frames nicht überall verfügbar
+      el = document.createElement("div");
+      el.className = "preview-pages";
+      el.setAttribute("aria-busy", "true");
+      showPdfPages(row, el);
     } else {
       el = document.createElement("iframe");
       el.title = "Vorschau von " + row.dataset.name;
-      el.src = row.dataset.url + (ext === "pdf" ? "#toolbar=0&navpanes=0&view=FitH" : "");
+      el.src = row.dataset.url;
     }
     emptyEl.hidden = true;
     frameBox.appendChild(el);
+  };
+
+  const showPdfPages = async (row, box) => {
+    let info = null;
+    try {
+      const r = await fetch(row.dataset.url + "/pages", { headers: { Accept: "application/json" } });
+      if (r.ok) info = await r.json();
+    } catch (_) { /* unten als Fehler behandelt */ }
+    if (current !== row) return; // inzwischen anderer Beleg gewählt
+    box.removeAttribute("aria-busy");
+    if (!info || !info.shown) {
+      const note = document.createElement("div");
+      note.className = "preview-note";
+      note.textContent = "Für dieses PDF gibt es keine Vorschau. Öffne es über den Pfeil oben rechts.";
+      box.replaceWith(note);
+      return;
+    }
+    for (let i = 0; i < info.shown; i++) {
+      const img = document.createElement("img");
+      img.src = `${row.dataset.url}/page/${i}`;
+      img.alt = info.pages > 1 ? `Seite ${i + 1} von ${info.pages}` : "Vorschau von " + row.dataset.name;
+      img.loading = i === 0 ? "eager" : "lazy";
+      img.decoding = "async";
+      // Platzhalter im A4-Format, danach echtes Seitenverhältnis (Querformat)
+      img.addEventListener("load", () => img.classList.add("is-loaded"), { once: true });
+      box.appendChild(img);
+    }
+    if (info.pages > info.shown) {
+      const more = document.createElement("p");
+      more.className = "preview-more";
+      more.textContent = `Weitere ${info.pages - info.shown} Seiten im neuen Tab.`;
+      box.appendChild(more);
+    }
   };
 
   rows.forEach((row, i) => {

@@ -10,7 +10,8 @@ from pathlib import Path
 from flask import (Flask, abort, flash, jsonify, redirect, render_template, request, send_file, session, url_for)
 from markupsafe import Markup
 
-from . import config, db, detect, gmail, imap_source, microsoft, providers, scheduler, secrets_store, service
+from . import (config, db, detect, gmail, imap_source, microsoft, preview, providers, scheduler, secrets_store,
+               service)
 from .lexware import LexwareClient, LexwareError
 
 OPEN_ENDPOINTS = {"health", "login", "static"}
@@ -227,6 +228,31 @@ def create_app(start_scheduler: bool = True) -> Flask:
             abort(404)
         ext = path.suffix.lower()
         return send_file(path, mimetype=MIME.get(ext, "application/octet-stream"), download_name=doc["filename"])
+
+    def _pdf_path(doc_id):
+        doc = db.get_document(doc_id)
+        path = doc and service.file_path(doc)
+        if not path or not path.exists() or path.suffix.lower() != ".pdf":
+            abort(404)
+        return path
+
+    @app.get("/file/<int:doc_id>/pages")
+    def file_pages(doc_id):
+        try:
+            count = preview.page_count(_pdf_path(doc_id))
+        except preview.PreviewError:
+            return jsonify(pages=0, shown=0), 422
+        return jsonify(pages=count, shown=min(count, preview.MAX_PAGES))
+
+    @app.get("/file/<int:doc_id>/page/<int:page>")
+    def file_page(doc_id, page):
+        try:
+            data = preview.render_page(_pdf_path(doc_id), page)
+        except preview.PreviewError:
+            abort(404)
+        resp = app.response_class(data, mimetype="image/webp")
+        resp.headers["Cache-Control"] = "private, max-age=86400"
+        return resp
 
     # --- Verlauf ----------------------------------------------------------
     @app.get("/history")

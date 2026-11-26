@@ -42,4 +42,4 @@ SOFTWARE.
 
 ## Python-Abhängigkeiten
 
-Flask, Waitress, pypdf, requests, die Google-API-Bibliotheken und cryptography werden über `requirements.txt` installiert und nicht mit ausgeliefert. Sie stehen unter ihren eigenen, freizügigen Lizenzen (BSD, Apache-2.0, ZPL).
+Flask, Waitress, pypdf, pypdfium2 (mit PDFium), Pillow, requests, die Google-API-Bibliotheken und cryptography werden über `requirements.txt` installiert und nicht mit ausgeliefert. Sie stehen unter ihren eigenen, freizügigen Lizenzen (BSD, Apache-2.0, MIT-CMU, ZPL).
