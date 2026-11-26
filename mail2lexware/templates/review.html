@@ -119,10 +119,10 @@
 
   <div class="bulk" data-bulk role="region" aria-label="Aktionen für Auswahl">
     <span class="selected"><span data-selected-count>0</span> ausgewählt</span>
-    <button class="btn btn-primary" name="action" value="upload" data-loading>{{ icon('upload-simple', 'bold') }}Hochladen</button>
+    <button class="btn btn-primary" name="action" value="upload" data-loading data-progress>{{ icon('upload-simple', 'bold') }}Hochladen</button>
     <button class="btn" name="action" value="ignore" data-loading>{{ icon('prohibit') }}Ignorieren</button>
     <span class="divider"></span>
-    <button class="btn btn-quiet" name="action" value="always" data-loading title="Regel anlegen: Belege dieses Absenders künftig automatisch hochladen">Absender: immer</button>
+    <button class="btn btn-quiet" name="action" value="always" data-loading data-progress title="Regel anlegen: Belege dieses Absenders künftig automatisch hochladen">Absender: immer</button>
     <button class="btn btn-quiet" name="action" value="never" data-loading title="Regel anlegen: Belege dieses Absenders künftig ignorieren">Absender: nie</button>
     <button type="button" class="btn btn-quiet btn-icon" data-clear title="Auswahl aufheben" aria-label="Auswahl aufheben">{{ icon('x') }}</button>
   </div>

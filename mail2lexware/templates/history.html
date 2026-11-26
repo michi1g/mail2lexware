@@ -48,7 +48,7 @@
               <input type="hidden" name="csrf" value="{{ csrf }}">
               <input type="hidden" name="ids" value="{{ d.id }}">
               {% if d.status == 'failed' %}
-                <button class="btn" name="action" value="upload" data-loading>{{ icon('arrow-clockwise') }}Erneut versuchen</button>
+                <button class="btn" name="action" value="upload" data-loading data-progress>{{ icon('arrow-clockwise') }}Erneut versuchen</button>
               {% else %}
                 <button class="btn" name="action" value="requeue" data-loading>Zur Prüfung</button>
               {% endif %}

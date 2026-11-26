@@ -1,6 +1,7 @@
 import hmac
 import os
 import secrets
+import tempfile
 import threading
 import time
 from datetime import datetime, timezone
@@ -10,11 +11,12 @@ from pathlib import Path
 from flask import (Flask, abort, flash, jsonify, redirect, render_template, request, send_file, session, url_for)
 from markupsafe import Markup
 
-from . import (config, db, detect, gmail, imap_source, microsoft, preview, providers, scheduler, secrets_store,
+from . import (backup, config, db, detect, gmail, imap_source, microsoft, preview, providers, scheduler, secrets_store,
                service)
 from .lexware import LexwareClient, LexwareError
 
 OPEN_ENDPOINTS = {"health", "login", "static"}
+BACKUP_MAX_BYTES = int(os.environ.get("BACKUP_MAX_MB", "4096")) * 1024 * 1024
 ALLOWED_EXTENSIONS = [".pdf", ".xml", ".jpg", ".jpeg", ".png"]
 MIME = {".pdf": "application/pdf", ".xml": "text/plain", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
         ".png": "image/png"}
@@ -71,6 +73,8 @@ def create_app(start_scheduler: bool = True) -> Flask:
     # --- Schutz: Login + CSRF ---------------------------------------------
     @app.before_request
     def guard():
+        if request.endpoint == "backup_restore":  # nur hier sind große Uploads erlaubt
+            request.max_content_length = BACKUP_MAX_BYTES
         if request.endpoint in OPEN_ENDPOINTS and request.endpoint != "login":
             return None
         if password and not session.get("auth") and request.endpoint != "login":
@@ -124,8 +128,13 @@ def create_app(start_scheduler: bool = True) -> Flask:
     def status():
         return jsonify(running=service.is_running())
 
+    @app.get("/upload/progress")
+    def upload_progress():
+        return jsonify(service.upload_progress())
+
     @app.errorhandler(400)
     @app.errorhandler(404)
+    @app.errorhandler(413)
     def error_page(e):
         return render_template("error.html", code=e.code, message=e.description), e.code
 
@@ -177,6 +186,14 @@ def create_app(start_scheduler: bool = True) -> Flask:
             filter_counts={"all": n_invoice + n_unsure, "invoice": n_invoice, "unsure": n_unsure},
         )
 
+    def _back():
+        """Zurück zur aufrufenden Seite. Der Upload mit Fortschrittsbalken sendet per fetch und bekommt
+        das Ziel als JSON, damit die Meldung nicht schon beim automatisch verfolgten Redirect verbraucht wird."""
+        target = request.referrer or url_for("review")
+        if request.headers.get("X-Upload-Progress"):
+            return jsonify(redirect=target)
+        return redirect(target)
+
     @app.post("/review/action")
     def review_action():
         ids = request.form.getlist("ids", type=int)
@@ -184,7 +201,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
         docs = [d for d in (db.get_document(i) for i in ids) if d]
         if not docs:
             flash("Wähle mindestens einen Beleg aus.", "error")
-            return redirect(request.referrer or url_for("review"))
+            return _back()
 
         if action in ("always", "never"):
             # Regel pro Absender anlegen und auf alle offenen Belege dieses Absenders anwenden
@@ -209,7 +226,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
             for i in ids:
                 db.set_status(i, "pending")
             flash(f"{len(ids)} zurück zur Prüfung gelegt.", "ok")
-        return redirect(request.referrer or url_for("review"))
+        return _back()
 
     @app.post("/run")
     def run():
@@ -323,6 +340,35 @@ def create_app(start_scheduler: bool = True) -> Flask:
         period_text = (f"Durchsucht werden Mails ab {since:%d.%m.%Y}" + (f" bis {until:%d.%m.%Y}." if until else " bis heute."))
         return render_template("settings.html", s=s, period_text=period_text,
                                key_from_env=bool(os.environ.get("LEXWARE_API_KEY")))
+
+    # --- Datensicherung ---------------------------------------------------
+    @app.post("/backup/download")
+    def backup_download():
+        out = tempfile.TemporaryFile(dir=config.DATA_DIR)  # verschwindet nach dem Senden von selbst
+        backup.create(out, include_files=bool(request.form.get("include_files")))
+        out.seek(0)
+        resp = send_file(out, mimetype="application/zip", as_attachment=True, download_name=backup.filename())
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
+    @app.post("/backup/restore")
+    def backup_restore():
+        up = request.files.get("file")
+        if not up or not up.filename:
+            flash("Bitte eine Backup-Datei (.zip) auswählen.", "error")
+            return redirect(url_for("settings"))
+        try:
+            r = backup.restore(up.stream)
+        except backup.BackupError as e:
+            flash(f"Wiederherstellung abgebrochen: {e}", "error")
+            return redirect(url_for("settings"))
+        msg = (f"Backup eingespielt: {r['documents']} Belege, {r['rules']} Regeln, {r['accounts']} Postfächer"
+               + (f", {r['new_files']} Belegdateien ergänzt" if r["new_files"] else "")
+               + f". Der vorherige Stand liegt unter backups/{r['safety_backup']}.")
+        flash(msg, "ok")
+        if r["warning"]:
+            flash(r["warning"], "error")
+        return redirect(url_for("settings"))
 
     # --- Verbindungen -----------------------------------------------------
     @app.get("/connections")

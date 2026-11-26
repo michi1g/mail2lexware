@@ -17,7 +17,11 @@
   });
   // Zurück-Navigation aus dem Cache: Ladezustände zurücksetzen
   window.addEventListener("pageshow", (e) => {
-    if (e.persisted) document.querySelectorAll(".is-loading").forEach((b) => b.classList.remove("is-loading"));
+    if (!e.persisted) return;
+    document.querySelectorAll(".is-loading").forEach((b) => b.classList.remove("is-loading"));
+    document.querySelectorAll(".upload-progress").forEach((el) => el.remove());
+    document.querySelectorAll("[data-progress]").forEach((b) => (b.disabled = false));
+    document.body.classList.remove("is-uploading");
   });
 
   // Einstellungen: nur die zum Zeitraum passenden Felder zeigen
@@ -50,6 +54,72 @@
   document.addEventListener("submit", (e) => {
     const msg = e.target.dataset?.confirm;
     if (msg && !window.confirm(msg)) e.preventDefault();
+  });
+
+  // Upload nach Lexware: Formular im Hintergrund senden, Fortschritt anzeigen, Verlassen abfangen
+  const warnLeave = (e) => { e.preventDefault(); e.returnValue = ""; };
+  const progressBox = () => {
+    const box = document.createElement("div");
+    box.className = "upload-progress";
+    box.setAttribute("role", "status");
+    box.innerHTML = '<div class="upload-progress-text"><span data-label>Upload wird vorbereitet …</span>' +
+      '<span class="num" data-count></span></div>' +
+      '<div class="upload-progress-track"><div class="upload-progress-fill" data-fill></div></div>' +
+      '<div class="upload-progress-hint">Bitte die Seite nicht schließen, bis der Upload fertig ist.</div>';
+    document.body.appendChild(box);
+    requestAnimationFrame(() => box.classList.add("is-visible"));
+    return box;
+  };
+
+  document.addEventListener("submit", async (e) => {
+    const submitter = e.submitter;
+    if (e.defaultPrevented || !submitter?.hasAttribute("data-progress")) return;
+    e.preventDefault();
+    const formEl = e.target;
+    const body = new FormData(formEl);
+    if (submitter.name) body.append(submitter.name, submitter.value);
+    document.querySelectorAll("[data-progress]").forEach((b) => (b.disabled = true));
+
+    document.body.classList.add("is-uploading");
+    const box = progressBox();
+    const label = box.querySelector("[data-label]");
+    const count = box.querySelector("[data-count]");
+    const fill = box.querySelector("[data-fill]");
+    window.addEventListener("beforeunload", warnLeave);
+
+    let finished = false;
+    const poll = async () => {
+      if (finished) return;
+      try {
+        const r = await fetch("/upload/progress", { headers: { Accept: "application/json" } });
+        const p = r.ok ? await r.json() : null;
+        if (!finished && p?.active && p.total) {
+          label.textContent = "Lädt nach Lexware hoch …";
+          count.textContent = `${p.done} von ${p.total}`;
+          box.classList.add("is-determinate");
+          fill.style.width = `${Math.round((p.done / p.total) * 100)}%`;
+        }
+      } catch (_) { /* nächster Versuch */ }
+      if (!finished) setTimeout(poll, 600);
+    };
+    setTimeout(poll, 300);
+
+    let target = location.href;
+    try {
+      // getAttribute statt formEl.action: die Buttons heißen name="action" und verdecken die Eigenschaft
+      const url = formEl.getAttribute("action") || location.href;
+      const r = await fetch(url, {
+        method: "POST", body, credentials: "same-origin", headers: { "X-Upload-Progress": "1" },
+      });
+      const data = r.ok && (r.headers.get("Content-Type") || "").includes("json") ? await r.json() : null;
+      target = data?.redirect || (r.redirected ? r.url : target);
+    } catch (_) { /* Netzwerkfehler: Seite neu laden, die Meldungen zeigen den Stand */ }
+    finished = true;
+    box.classList.add("is-determinate");
+    fill.style.width = "100%";
+    label.textContent = "Fertig";
+    window.removeEventListener("beforeunload", warnLeave);
+    location.assign(target);
   });
 
   // Läuft gerade ein Durchlauf? Dann Status abfragen und danach neu laden.
