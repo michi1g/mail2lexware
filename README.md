@@ -61,6 +61,12 @@ Die Datei `unraid/mail2lexware.xml` nach `/boot/config/plugins/dockerMan/templat
 
 Alle veränderlichen Daten (Einstellungen, Zugangsdaten, Datenbank, Beleg-Dateien) liegen im Volume `/data`. Das Image lässt sich ohne Datenverlust aktualisieren. Die Rechte von `/data` korrigiert der Container beim Start selbst (Standard `PUID=99`, `PGID=100`, per Umgebungsvariable änderbar).
 
+### Backup und Wiederherstellung
+
+Unter *Einstellungen → Datensicherung* lädt die GUI ein ZIP mit Datenbank (Belege, Verlauf, Regeln, Postfächer), Einstellungen, Gmail-Zugang und auf Wunsch allen Belegdateien herunter. Über dieselbe Seite lässt sich ein solches ZIP wieder einspielen, auch auf einer frischen Installation. Der vorherige Stand wird dabei automatisch unter `/data/backups/` gesichert (die letzten fünf bleiben erhalten).
+
+Die Zugangsdaten bleiben im Backup verschlüsselt, `encryption.key` liegt aber mit im ZIP. Das Backup also wie ein Passwort aufbewahren. Wer `W2L_ENCRYPTION_KEY` nutzt, muss die Variable auf der Zielinstallation mit demselben Wert setzen. Große Backups sind bis 4 GB erlaubt, änderbar über `BACKUP_MAX_MB`.
+
 ### Umgebungsvariablen
 
 | Variable | Bedeutung |
@@ -70,6 +76,7 @@ Alle veränderlichen Daten (Einstellungen, Zugangsdaten, Datenbank, Beleg-Dateie
 | `LEXWARE_API_KEY` | Lexware-API-Key, hat Vorrang vor dem Wert aus den Einstellungen. |
 | `TZ` | Zeitzone für Anzeige und Zeitplan, Standard `Europe/Berlin`. |
 | `PORT` | Port innerhalb des Containers, Standard `8080`. |
+| `BACKUP_MAX_MB` | Maximale Größe eines eingespielten Backups in MB, Standard `4096`. |
 | `PUID`, `PGID` | Benutzer und Gruppe für `/data`, Standard `99` und `100`. |
 
 ## Erste Einrichtung

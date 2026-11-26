@@ -1,6 +1,7 @@
 import hmac
 import os
 import secrets
+import tempfile
 import threading
 import time
 from datetime import datetime, timezone
@@ -10,11 +11,12 @@ from pathlib import Path
 from flask import (Flask, abort, flash, jsonify, redirect, render_template, request, send_file, session, url_for)
 from markupsafe import Markup
 
-from . import (config, db, detect, gmail, imap_source, microsoft, preview, providers, scheduler, secrets_store,
+from . import (backup, config, db, detect, gmail, imap_source, microsoft, preview, providers, scheduler, secrets_store,
                service)
 from .lexware import LexwareClient, LexwareError
 
 OPEN_ENDPOINTS = {"health", "login", "static"}
+BACKUP_MAX_BYTES = int(os.environ.get("BACKUP_MAX_MB", "4096")) * 1024 * 1024
 ALLOWED_EXTENSIONS = [".pdf", ".xml", ".jpg", ".jpeg", ".png"]
 MIME = {".pdf": "application/pdf", ".xml": "text/plain", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
         ".png": "image/png"}
@@ -71,6 +73,8 @@ def create_app(start_scheduler: bool = True) -> Flask:
     # --- Schutz: Login + CSRF ---------------------------------------------
     @app.before_request
     def guard():
+        if request.endpoint == "backup_restore":  # nur hier sind große Uploads erlaubt
+            request.max_content_length = BACKUP_MAX_BYTES
         if request.endpoint in OPEN_ENDPOINTS and request.endpoint != "login":
             return None
         if password and not session.get("auth") and request.endpoint != "login":
@@ -130,6 +134,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
 
     @app.errorhandler(400)
     @app.errorhandler(404)
+    @app.errorhandler(413)
     def error_page(e):
         return render_template("error.html", code=e.code, message=e.description), e.code
 
@@ -335,6 +340,35 @@ def create_app(start_scheduler: bool = True) -> Flask:
         period_text = (f"Durchsucht werden Mails ab {since:%d.%m.%Y}" + (f" bis {until:%d.%m.%Y}." if until else " bis heute."))
         return render_template("settings.html", s=s, period_text=period_text,
                                key_from_env=bool(os.environ.get("LEXWARE_API_KEY")))
+
+    # --- Datensicherung ---------------------------------------------------
+    @app.post("/backup/download")
+    def backup_download():
+        out = tempfile.TemporaryFile(dir=config.DATA_DIR)  # verschwindet nach dem Senden von selbst
+        backup.create(out, include_files=bool(request.form.get("include_files")))
+        out.seek(0)
+        resp = send_file(out, mimetype="application/zip", as_attachment=True, download_name=backup.filename())
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
+    @app.post("/backup/restore")
+    def backup_restore():
+        up = request.files.get("file")
+        if not up or not up.filename:
+            flash("Bitte eine Backup-Datei (.zip) auswählen.", "error")
+            return redirect(url_for("settings"))
+        try:
+            r = backup.restore(up.stream)
+        except backup.BackupError as e:
+            flash(f"Wiederherstellung abgebrochen: {e}", "error")
+            return redirect(url_for("settings"))
+        msg = (f"Backup eingespielt: {r['documents']} Belege, {r['rules']} Regeln, {r['accounts']} Postfächer"
+               + (f", {r['new_files']} Belegdateien ergänzt" if r["new_files"] else "")
+               + f". Der vorherige Stand liegt unter backups/{r['safety_backup']}.")
+        flash(msg, "ok")
+        if r["warning"]:
+            flash(r["warning"], "error")
+        return redirect(url_for("settings"))
 
     # --- Verbindungen -----------------------------------------------------
     @app.get("/connections")
