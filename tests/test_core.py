@@ -189,3 +189,20 @@ def test_cycle_scan_upload_and_label(monkeypatch):
     assert (result["new"], result["uploaded"], result["labeled"]) == (1, 1, 1)
     assert labeled == ["mail-42"]
     assert [d["lexware_id"] for d in db.list_documents("uploaded") if d["message_id"] == "mail-42"] == ["lex-1"]
+
+
+def test_upload_progress_counts_and_endpoint(client, monkeypatch):
+    from mail2lexware import config, service
+
+    seen = []
+    monkeypatch.setattr(service, "_upload", lambda doc, c: seen.append(service.upload_progress()) or True)
+    monkeypatch.setattr(config, "TOKEN_FILE", config.DATA_DIR / "kein-token.json")
+    s = config.load_settings()
+    s.update(lexware_api_key="k")
+    config.save_settings(s)
+    ids = [db.add_document(msg_key=f"prog:{n}", message_id=f"prog-{n}", sha256=f"prog{n}", filename="p.pdf",
+                           mime_type="application/pdf", size=1, status="pending") for n in range(3)]
+
+    assert service.upload_ids(ids)["uploaded"] == 3
+    assert [(p["active"], p["done"], p["total"]) for p in seen] == [(True, 0, 3), (True, 1, 3), (True, 2, 3)]
+    assert client.get("/upload/progress").get_json() == {"active": False, "done": 3, "total": 3}

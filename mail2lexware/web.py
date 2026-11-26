@@ -124,6 +124,10 @@ def create_app(start_scheduler: bool = True) -> Flask:
     def status():
         return jsonify(running=service.is_running())
 
+    @app.get("/upload/progress")
+    def upload_progress():
+        return jsonify(service.upload_progress())
+
     @app.errorhandler(400)
     @app.errorhandler(404)
     def error_page(e):
@@ -177,6 +181,14 @@ def create_app(start_scheduler: bool = True) -> Flask:
             filter_counts={"all": n_invoice + n_unsure, "invoice": n_invoice, "unsure": n_unsure},
         )
 
+    def _back():
+        """Zurück zur aufrufenden Seite. Der Upload mit Fortschrittsbalken sendet per fetch und bekommt
+        das Ziel als JSON, damit die Meldung nicht schon beim automatisch verfolgten Redirect verbraucht wird."""
+        target = request.referrer or url_for("review")
+        if request.headers.get("X-Upload-Progress"):
+            return jsonify(redirect=target)
+        return redirect(target)
+
     @app.post("/review/action")
     def review_action():
         ids = request.form.getlist("ids", type=int)
@@ -184,7 +196,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
         docs = [d for d in (db.get_document(i) for i in ids) if d]
         if not docs:
             flash("Wähle mindestens einen Beleg aus.", "error")
-            return redirect(request.referrer or url_for("review"))
+            return _back()
 
         if action in ("always", "never"):
             # Regel pro Absender anlegen und auf alle offenen Belege dieses Absenders anwenden
@@ -209,7 +221,7 @@ def create_app(start_scheduler: bool = True) -> Flask:
             for i in ids:
                 db.set_status(i, "pending")
             flash(f"{len(ids)} zurück zur Prüfung gelegt.", "ok")
-        return redirect(request.referrer or url_for("review"))
+        return _back()
 
     @app.post("/run")
     def run():

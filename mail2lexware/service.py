@@ -12,6 +12,7 @@ from .lexware import LexwareClient, LexwareError
 
 log = logging.getLogger("mail2lexware")
 _lock = threading.Lock()  # nur ein Durchlauf bzw. Upload gleichzeitig (Rate-Limit, SQLite)
+_progress = {"active": False, "done": 0, "total": 0}  # manueller Upload, wird von /upload/progress abgefragt
 
 
 def is_running() -> bool:
@@ -228,13 +229,23 @@ def upload_ids(ids: list[int]) -> dict:
         result["error"] = "Kein Lexware-API-Key hinterlegt."
         return result
     with _lock:
-        for doc_id in ids:
-            doc = db.get_document(doc_id)
-            if doc and doc["status"] in ("pending", "failed"):
-                result["uploaded" if _upload(doc, client) else "failed"] += 1
+        _progress.update(active=True, done=0, total=len(ids))
         try:
-            if config.TOKEN_FILE.exists():
-                _label_mails(settings, gmail.connect())
-        except Exception as e:  # Label ist nachrangig; der nächste Durchlauf holt es nach
-            log.warning("Labeln fehlgeschlagen: %s", e)
+            for doc_id in ids:
+                doc = db.get_document(doc_id)
+                if doc and doc["status"] in ("pending", "failed"):
+                    result["uploaded" if _upload(doc, client) else "failed"] += 1
+                _progress["done"] += 1
+            try:
+                if config.TOKEN_FILE.exists():
+                    _label_mails(settings, gmail.connect())
+            except Exception as e:  # Label ist nachrangig; der nächste Durchlauf holt es nach
+                log.warning("Labeln fehlgeschlagen: %s", e)
+        finally:
+            _progress["active"] = False
     return result
+
+
+def upload_progress() -> dict:
+    """Stand des laufenden manuellen Uploads (für den Fortschrittsbalken)."""
+    return dict(_progress)
