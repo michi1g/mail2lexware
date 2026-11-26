@@ -135,7 +135,10 @@
   all.addEventListener("change", () => { checks.forEach((c) => (c.checked = all.checked)); refresh(); });
   form.querySelector("[data-clear]").addEventListener("click", () => { checks.forEach((c) => (c.checked = false)); refresh(); });
 
-  // Auf großen Bildschirmen direkt den ersten Beleg zeigen
-  if (rows.length && window.matchMedia("(min-width: 1101px)").matches) preview(rows[0]);
+  // Sobald das Vorschaufenster sichtbar ist, automatisch den ersten Beleg zeigen
+  // (auch wenn das Fenster erst nachträglich breit genug gezogen wird)
+  const autoPreview = () => { if (!current && rows.length && frameBox.offsetParent) preview(rows[0]); };
+  autoPreview();
+  window.addEventListener("resize", autoPreview, { passive: true });
   refresh();
 })();

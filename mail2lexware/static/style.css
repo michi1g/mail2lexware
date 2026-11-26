@@ -523,6 +523,13 @@ a.choice .choice-body { height: 100%; }
 
 /* ---------- Responsiv ---------- */
 @media (max-width: 1100px) {
+  /* Mittlere Breiten: Vorschau bleibt sichtbar, Spalte wächst mit dem Fenster */
+  .review-grid { grid-template-columns: minmax(0, 1fr) minmax(300px, 44%); gap: 16px; }
+  .doc { grid-template-columns: 18px minmax(0, 1fr) auto; gap: 12px; padding: 12px 14px; }
+  .doc-type { display: none; }
+  .doc-email { display: none; }
+}
+@media (max-width: 760px) {
   .review-grid { grid-template-columns: minmax(0, 1fr); }
   .preview { display: none; }
   .doc-open { display: inline-grid; }
